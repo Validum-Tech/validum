@@ -1,0 +1,106 @@
+name: Release
+
+# Запуск: git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Тег релиза (например, v0.1.0)"
+        required: true
+
+permissions:
+  contents: write   # создание GitHub Release
+  packages: write   # публикация в GitHub Packages
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Сборка и публикация
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '21'
+          cache: gradle
+
+      - name: Проверка Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # Секреты для Maven Central: если они не заданы, подпись просто не выполняется.
+      - name: Build и тесты
+        run: ./gradlew build --no-daemon
+
+      # Перевыпуск тега на той же версии: пакет уже лежит в GitHub Packages,
+      # повторная публикация отвечает 409 — это не повод валить релиз.
+      - name: Публикация в GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          if ./gradlew publish --no-daemon --no-configuration-cache; then
+            echo "Опубликовано в GitHub Packages."
+          else
+            echo "::warning::Публикация не удалась — вероятно, версия уже опубликована. Релиз продолжается."
+          fi
+
+      - name: Определить версию
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ -n "${{ inputs.tag }}" ]; then TAG="${{ inputs.tag }}"; fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Ревизия: $TAG (версия $VERSION)"
+
+      - name: Подготовить артефакты релиза
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p dist
+          cp validum-cli/build/libs/validum.jar "dist/validum-${VERSION}.jar"
+          sha256sum "dist/validum-${VERSION}.jar" > "dist/validum-${VERSION}.jar.sha256"
+          ls -lh dist
+
+      - name: Smoke-тест jar
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          java -jar "dist/validum-${VERSION}.jar" version
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          NOTES="$(awk '/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md)"
+          if [ -z "$NOTES" ]; then NOTES="Validum $VERSION — см. CHANGELOG.md"; fi
+          # Идемпотентно: перевыпуск тега не должен падать на существующем релизе
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --yes
+          fi
+          gh release create "$TAG" \
+            "dist/validum-${VERSION}.jar" \
+            "dist/validum-${VERSION}.jar.sha256" \
+            --title "Validum $VERSION" \
+            --notes "$NOTES"

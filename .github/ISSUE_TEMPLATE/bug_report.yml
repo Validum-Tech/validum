@@ -1,0 +1,63 @@
+name: Баг
+description: Что-то работает не так, как ожидалось
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за репорт! Перед отправкой проверьте, что такого issue ещё нет.
+        Уязвимости — не сюда, а на security@validum.tech (см. SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: Версия
+      description: Вывод `java -jar validum.jar version` или тег коммита
+      placeholder: "validum 0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Где проявляется
+      options:
+        - CLI (fat jar)
+        - REST API
+        - Java-библиотека (validum-core)
+        - Allure extension
+        - Docker
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      description: Команда или запрос целиком, с seed и asOf, если задавали
+      placeholder: |
+        java -jar validum.jar generate individual --seed 42 --region TATARSTAN
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидалось
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Получилось
+      description: Текст ошибки целиком, если она есть
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Окружение
+      description: ОС, JDK, способ запуска (docker / локально), есть ли data/ED807.xml
+      placeholder: "Windows 11, Temurin 21.0.4, локально, ED807 есть"
