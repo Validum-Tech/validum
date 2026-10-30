@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="WINDOWS-1251"?>
+<ED807 xmlns="urn:cbr-ru:ed:v2.0" EDNo="1" EDDate="2026-10-14" InfoTypeCode="FIRR">
+    <BICDirectoryEntry BIC="044525225">
+        <ParticipantInfo NameP="ПАО Сбербанк" CntrCd="RU" Adr="УЛ. ВАВИЛОВА,21" Ind="117997" Rgn="45" Tnp="г" Nnp="Москва" PtType="20" ParticipantStatus="PSAC" RegN="1481" UID="4525545000"/>
+        <Accounts Account="30101810400000000225" RegulationAccountType="CRSA" AccountStatus="ACAC" AccountCBRBIC="044525000"/>
+    </BICDirectoryEntry>
+    <BICDirectoryEntry BIC="044525187">
+        <ParticipantInfo NameP="Банк ВТБ (ПАО)" CntrCd="RU" Rgn="45" Tnp="г" Nnp="Москва" PtType="20" ParticipantStatus="PSAC"/>
+        <Accounts Account="30101810700000000187" RegulationAccountType="CRSA" AccountStatus="ACAC" AccountCBRBIC="044525000"/>
+    </BICDirectoryEntry>
+    <BICDirectoryEntry BIC="044525974">
+        <ParticipantInfo NameP="АО &quot;ТБанк&quot;" CntrCd="RU" Rgn="45" Tnp="г" Nnp="Москва" PtType="20" ParticipantStatus="PSAC"/>
+        <Accounts Account="30101810145250000974" RegulationAccountType="CRSA" AccountStatus="ACAC" AccountCBRBIC="044525000"/>
+    </BICDirectoryEntry>
+    <BICDirectoryEntry BIC="044525000">
+        <ParticipantInfo NameP="ОКЦ № 1 ГУ Банка России по ЦФО" Rgn="45" Tnp="г" Nnp="Москва 35" PtType="00" ParticipantStatus="PSAC"/>
+    </BICDirectoryEntry>
+    <BICDirectoryEntry BIC="016311121">
+        <ParticipantInfo NameP="УФК по Саратовской области" CntrCd="RU" Rgn="63" Tnp="г" Nnp="Саратов" PtType="52" ParticipantStatus="PSAC"/>
+        <Accounts Account="40102810845370000052" RegulationAccountType="UTRA" AccountStatus="ACAC" AccountCBRBIC="046311001"/>
+    </BICDirectoryEntry>
+    <BICDirectoryEntry BIC="999999999">
+        <ParticipantInfo NameP="Закрытый банк" CntrCd="RU" Rgn="45" Tnp="г" Nnp="Москва" PtType="20" ParticipantStatus="CLOSED"/>
+        <Accounts Account="30101810400000000225" RegulationAccountType="CRSA" AccountStatus="ACAC" AccountCBRBIC="044525000"/>
+    </BICDirectoryEntry>
+</ED807>

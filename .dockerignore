@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Gradle (кэш и локальные сборки)
+.gradle/
+build/
+!build/libs/*.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Логи
+*.log
+logs/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Docs
+docs/
+README.md
+LICENSE
+
+# Тесты (не нужны в runtime)
+**/src/test/
+
+# Env
+.env
+.env.local

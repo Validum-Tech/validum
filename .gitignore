@@ -1,0 +1,43 @@
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Логи и env
+*.log
+logs/
+.env
+.env.local
+
+# PostgreSQL
+pgdata/
+
+# Lombok
+lombok.config
+
+# Полный справочник БИК ЦБ РФ (обновляется еженедельно, не коммитим)
+data/
+
+# Сгенерированные SQL-дампы (получаются командой generate --format sql)
+/seed.sql
+/*.sql
+
+# Allure: генерируемые результаты тестов (в git не держим)
+allure-results/

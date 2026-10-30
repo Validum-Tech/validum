@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: validum-api
+
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 8080
+  shutdown: graceful
+
+validum:
+  bik:
+    # Путь к справочнику ЦБ РФ (ED807). Обязателен: встроенного демо-набора нет.
+    # Если пусто — ищется VALIDUM_BIK_FILE, затем data/ED807.xml.
+    # Скачать: validum fetch-bik -o data/ED807.xml
+    file: ${VALIDUM_BIK_FILE:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      # Детали (диски, БД, диск-спейс) — только авторизованному клиенту.
+      # Публичный /actuator/health отдаёт лишь статус UP/DOWN.
+      show-details: when-authorized
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    ru.validum: INFO
+    org.springframework: WARN

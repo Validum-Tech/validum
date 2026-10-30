@@ -1,0 +1,29 @@
+# Единый стиль окончаний строк в репозитории.
+# Без этого файла Windows-контрибьюторы получают CRLF в рабочем дереве
+# и git считает «изменёнными» сотни файлов (у нас такое уже было).
+
+* text=auto eol=lf
+
+# Скрипты Windows — с CRLF, иначе PowerShell/CMD местами спотыкаются
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# Скрипты Unix — строго LF (иначе «bad interpreter»)
+gradlew text eol=lf
+*.sh    text eol=lf
+
+# Бинарные файлы: git не должен ни конвертировать, ни пытаться диффать
+*.jar   binary
+*.zip   binary
+*.gz    binary
+*.7z    binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.ico   binary
+*.pdf   binary
+*.dbf   binary
+
+# Сгенерированные отчёты и справочники не мешают диффам
+*.tsv.gz binary

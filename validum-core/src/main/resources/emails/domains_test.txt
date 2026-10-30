@@ -1,0 +1,10 @@
+test.ru
+example.com
+example.org
+example.net
+qa.local
+test.local
+demo.local
+mock.io
+test.tech
+fake.dev

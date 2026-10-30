@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Gradle-зависимости (version catalog + модульные .kts)
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      spring:
+        patterns: ["org.springframework*", "io.spring*"]
+      test:
+        patterns: ["org.junit*", "org.assertj*", "io.qameta*"]
+
+  # Версии GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
