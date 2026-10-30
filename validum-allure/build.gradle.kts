@@ -26,16 +26,16 @@ dependencies {
     implementation(project(":validum-core"))
 
     // Allure (2.35.x): allure-jupiter заменил allure-junit5
-    implementation("io.qameta.allure:allure-jupiter:2.35.3")
+    implementation("io.qameta.allure:allure-jupiter:3.0.1")
 
     // JUnit API нужен в main-коде: BeforeEachCallback, ExtensionContext
-    implementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
+    implementation("org.junit.jupiter:junit-jupiter-api:6.1.3")
 
     // Jackson — для сериализации профиля в JSON-attachment
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2")
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.assertj:assertj-core:3.26.3")
+    testImplementation("org.assertj:assertj-core:3.27.7")
 }
