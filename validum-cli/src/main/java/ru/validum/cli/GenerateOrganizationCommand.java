@@ -46,7 +46,8 @@ public final class GenerateOrganizationCommand implements Callable<Integer> {
     description = "БИК банка компании (9 цифр). Иначе — случайный из справочника")
   String bankBik;
 
-  @Option(names = "--format", defaultValue = "json", description = "json | json-array | csv")
+  @Option(names = "--format", defaultValue = "json",
+    description = "json | json-array | csv | csv-semicolon (русский Excel) | sql")
   String format;
 
   @Option(names = "--dialect", description = "SQL-диалект: postgres | oracle | mysql")
@@ -65,10 +66,18 @@ public final class GenerateOrganizationCommand implements Callable<Integer> {
   @Option(names = "--terrorist") boolean terrorist;
   @Option(names = "--blocked") boolean blocked;
 
+  @Option(names = "--unique",
+    description = "Без повторов ОГРН в наборе (требует --seed); при исчерпании вариантов — exit 2")
+  boolean unique;
+
   @Override
   public Integer call() throws Exception {
     if (count < 1 || count > 10_000) {
       System.err.println("Ошибка: --count должен быть в диапазоне 1..10000");
+      return 2;
+    }
+    if (unique && seed == null) {
+      System.err.println("Ошибка: --unique требует --seed, иначе набор невоспроизводим");
       return 2;
     }
     long baseSeed = seed != null ? seed : System.nanoTime();
@@ -81,28 +90,38 @@ public final class GenerateOrganizationCommand implements Callable<Integer> {
     }
 
     List<OrganizationProfile> profiles = new ArrayList<>(count);
-    for (int i = 0; i < count; i++) {
-      OrganizationProfileGenerator.Builder b = OrganizationProfileGenerator.builder()
-        .seed(baseSeed + i);
-      if (type != null) b.organizationType(
-        OrganizationType.valueOf(type.toUpperCase(Locale.ROOT)));
-      if (name != null) b.organizationName(name);
-      if (regionValue != null) b.region(regionValue);
-      if (okved != null) b.okved(okved);
-      if (bankBik != null) b.bik(bankBik);
-      if (terrorist) b.terrorist(true);
-      if (blocked) b.blocked(true);
-      try {
-        profiles.add(b.build().generate());
-      } catch (IllegalArgumentException e) {
-        System.err.println("Ошибка: " + e.getMessage());
-        return 2;
+    UniqueGuard guard = unique ? new UniqueGuard("ОГРН", 10_000_000_000_000L) : null;
+    try {
+      for (int i = 0; i < count; i++) {
+        long profileSeed = baseSeed + i;
+        profiles.add(guard == null
+          ? generateOne(profileSeed, regionValue)
+          : guard.next(profileSeed, s -> generateOne(s, regionValue), OrganizationProfile::ogrn));
       }
+    } catch (IllegalArgumentException e) {
+      System.err.println("Ошибка: " + e.getMessage());
+      return 2;
     }
 
     List<Map<String, String>> rows = OrganizationProfileFlattener.flattenAll(profiles);
     OutputFormat fmt = OutputFormat.fromString(format);
+    OutputMeta.print(System.err, baseSeed, null, seed == null);
     OutputWriter.of(output, fmt, dialect, table, !noDdl).write(rows, baseSeed);
     return 0;
+  }
+
+  /** Один профиль ЮЛ под конкретный seed: опции командной строки применяются заново. */
+  private OrganizationProfile generateOne(long profileSeed, Region regionValue) {
+    OrganizationProfileGenerator.Builder b = OrganizationProfileGenerator.builder()
+      .seed(profileSeed);
+    if (type != null) b.organizationType(
+      OrganizationType.valueOf(type.toUpperCase(Locale.ROOT)));
+    if (name != null) b.organizationName(name);
+    if (regionValue != null) b.region(regionValue);
+    if (okved != null) b.okved(okved);
+    if (bankBik != null) b.bik(bankBik);
+    if (terrorist) b.terrorist(true);
+    if (blocked) b.blocked(true);
+    return b.build().generate();
   }
 }

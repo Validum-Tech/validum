@@ -54,7 +54,7 @@ class CliSmokeTest {
   void version() {
     assertThat(run("version")).isZero();
     String out = capturedOut.toString(StandardCharsets.UTF_8);
-    assertThat(out).contains("validum 0.1.0");
+    assertThat(out).contains("validum " + ru.validum.core.Version.version());
     assertThat(out).contains("Java:");
   }
 

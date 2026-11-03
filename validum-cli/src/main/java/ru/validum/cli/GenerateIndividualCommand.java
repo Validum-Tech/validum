@@ -55,7 +55,7 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
   String bik;
 
   @Option(names = "--format", defaultValue = "json",
-    description = "Формат: json | json-array | csv")
+    description = "Формат: json | json-array | csv | csv-semicolon (русский Excel) | sql")
   String format;
 
   @Option(names = "--dialect", description = "SQL-диалект: postgres | oracle | mysql")
@@ -88,32 +88,35 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
   @Option(names = "--blocked", description = "Флаг «заблокирован банком»")
   boolean blocked;
 
+  @Option(names = "--unique",
+    description = "Без повторов ИНН в наборе (требует --seed); при исчерпании вариантов — exit 2")
+  boolean unique;
+
   @Override
   public Integer call() throws Exception {
     if (count < 1 || count > 10_000) {
       System.err.println("Ошибка: --count должен быть в диапазоне 1..10000");
       return 2;
     }
+    if (unique && seed == null) {
+      System.err.println("Ошибка: --unique требует --seed, иначе набор невоспроизводим");
+      return 2;
+    }
     long baseSeed = seed != null ? seed : System.nanoTime();
     BikSource bikSource = CliBik.source();
 
     List<IndividualProfile> profiles = new ArrayList<>(count);
+    LocalDate asOfDate;
     try {
-      LocalDate asOfDate = AsOfOption.parse(asOf);
+      asOfDate = AsOfOption.parse(asOf);
+      UniqueGuard guard = unique ? new UniqueGuard("ИНН", 10_000_000_000L) : null;
       for (int i = 0; i < count; i++) {
-        IndividualProfileGenerator.Builder b = IndividualProfileGenerator.builder()
-          .seed(baseSeed + i)
-          .bikSource(bikSource)
-          .withAccount(!noAccount);
-        if (gender != null) b.gender(Gender.valueOf(gender.toUpperCase(Locale.ROOT)));
-        if (age != null) b.age(age);
-        if (region != null) b.region(RegionOption.parse(region));
-        if (bik != null) b.bik(bik);
-        if (asOfDate != null) b.asOf(asOfDate);
-        if (documents != null) b.documents(parseTypes(documents));
-        if (terrorist) b.terrorist(true);
-        if (blocked) b.blocked(true);
-        profiles.add(b.build().generate());
+        long profileSeed = baseSeed + i;
+        profiles.add(guard == null
+          ? newBuilder(profileSeed, bikSource, asOfDate).build().generate()
+          : guard.next(profileSeed,
+              s -> newBuilder(s, bikSource, asOfDate).build().generate(),
+              IndividualProfile::inn));
       }
     } catch (IllegalArgumentException e) {
       System.err.println("Ошибка: " + e.getMessage());
@@ -130,11 +133,29 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
     }
 
     List<Map<String, String>> rows = IndividualProfileFlattener.flattenAll(profiles, docFormat);
+    OutputMeta.print(System.err, baseSeed, asOfDate, seed == null);
     OutputWriter.of(output, fmt, dialect, table, !noDdl).write(rows, baseSeed);
     if (docFormat == DocumentsFormat.SPLIT) {
       writeDocumentsTable(profiles, output);
     }
     return 0;
+  }
+
+  /** Свежий билдер профиля под конкретный seed: опции командной строки применяются заново. */
+  private IndividualProfileGenerator.Builder newBuilder(long profileSeed, BikSource bikSource, LocalDate asOfDate) {
+    IndividualProfileGenerator.Builder b = IndividualProfileGenerator.builder()
+      .seed(profileSeed)
+      .bikSource(bikSource)
+      .withAccount(!noAccount);
+    if (gender != null) b.gender(Gender.valueOf(gender.toUpperCase(Locale.ROOT)));
+    if (age != null) b.age(age);
+    if (region != null) b.region(RegionOption.parse(region));
+    if (bik != null) b.bik(bik);
+    if (asOfDate != null) b.asOf(asOfDate);
+    if (documents != null) b.documents(parseTypes(documents));
+    if (terrorist) b.terrorist(true);
+    if (blocked) b.blocked(true);
+    return b;
   }
 
   private static List<DocumentType> parseTypes(String[] values) {

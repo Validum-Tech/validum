@@ -30,6 +30,13 @@ class OutputFormatTest {
   }
 
   @ParameterizedTest
+  @ValueSource(strings = {"csv-semicolon", "csv_semicolon", "csv-excel", "csv_excel", "CSV-SEMICOLON"})
+  @DisplayName("csv-semicolon / csv-excel → CSV_SEMICOLON (алиасы для Excel)")
+  void csvSemicolon(String input) {
+    assertThat(OutputFormat.fromString(input)).isEqualTo(OutputFormat.CSV_SEMICOLON);
+  }
+
+  @ParameterizedTest
   @ValueSource(strings = {"JSON", "Json", "CSV", "Csv", "json-array", "JSON-ARRAY"})
   @DisplayName("Регистр не важен")
   void caseInsensitive(String input) {

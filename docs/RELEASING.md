@@ -7,25 +7,21 @@
 | Куда | Что | Как |
 |---|---|---|
 | GitHub Release | `validum-<версия>.jar` + `.sha256` | автоматически по тегу `v*` |
-| GitHub Packages | `validum-core`, `validum-allure` (jar + sources + javadoc) | автоматически по тегу `v*` |
-
-В Maven идут только **две библиотеки**. `validum-cli` и `validum-api` — приложения: они
-распространяются готовыми артефактами (fat jar / boot-jar / Docker-образ), а не как зависимости.
+| GitHub Packages | `validum-core`, `validum-api`, `validum-cli`, `validum-allure` (jar + sources + javadoc) | автоматически по тегу `v*` |
 | Maven Central | те же четыре артефакта | ручной шаг, см. ниже |
 | Docker Hub | `validum/validum-api` | пока вручную, автоматизация — после 0.2 |
 
 ## Перед релизом
 
 1. **Проверить цифры.** Тесты, покрытие, число эндпоинтов и команд должны совпадать
-   в `README.md`, `docs/SCENARIOS.md`, `docs/ROADMAP.md`, `CHANGELOG.md`.
+   в `README.md`, `docs/ROADMAP.md`, `CHANGELOG.md`.
    Источник правды — `*/build/test-results/test/*.xml` и `*/build/reports/jacoco/test/*.csv`, не память.
 2. **`CHANGELOG.md`** — секция `## [X.Y.Z] — ГГГГ-ММ-ДД`. Из неё берётся тело GitHub Release.
-3. **Версия** — `version = "X.Y.Z"` в корневом `build.gradle.kts`.
+3. **Версия** — `version=X.Y.Z` в `gradle.properties` (единственное место).
 4. **Сборка локально:**
 
    ```bash
-   ./gradlew build
-   ./gradlew publishToMavenLocal --no-configuration-cache   # maven-publish и CC пока конфликтуют
+   ./gradlew build publishToMavenLocal
    java -jar validum-cli/build/libs/validum.jar version
    ```
 
@@ -39,33 +35,36 @@ git tag -a v0.1.0 -m "Validum 0.1.0"
 git push origin v0.1.0
 ```
 
-`release.yml` (Actions → Release) соберёт проект, прогонит тесты, опубликует пакеты
-в GitHub Packages и создаст GitHub Release с jar и контрольной суммой.
+`release.yml` (Actions → Release) соберёт проект, прогонит тесты, опубликует
+`validum-core` и `validum-allure` в **Maven Central** и создаст GitHub Release с jar и
+контрольной суммой.
 
 **Секреты репозитория:**
 
 | Секрет | Обязателен | Зачем |
 |---|---|---|
-| `GITHUB_TOKEN` | да (выдаётся сам) | GitHub Packages + Release |
+| `CENTRAL_USERNAME` | для Central | username из токена Central Portal |
+| `CENTRAL_TOKEN` | для Central | пароль из токена Central Portal |
 | `SIGNING_KEY` | для Central | armored PGP-ключ (`gpg --armor --export-secret-keys`) |
 | `SIGNING_PASSWORD` | для Central | пароль ключа |
-| `MAVEN_USER` / `MAVEN_PASSWORD` | для Central | токен Central Portal |
 
-Без `SIGNING_KEY` сборка проходит, но артефакты не подписаны — Central такие не примет.
+Если секреты не заданы, шаг публикации в Central пропускается: сборка, тесты, релиз и jar
+проходят как обычно, просто пакета в реестре не появится. Порядок получения ключей и токена —
+внутренняя инструкция ведётся в `validum-dev` (внутри публичного репозитория её нет).
 
-## Maven Central (ручной шаг для 0.1.0)
+## Maven Central
 
-groupId `io.github.validum-tech` подтверждается через GitHub-организацию
-`Validum-Tech` при первом релизе в [Central Portal](https://central.sonatype.com/).
+Публикация автоматическая: `./gradlew publishToMavenCentral` (плагин `com.vanniktech.maven.publish`,
+`SonatypeHost.CENTRAL_PORTAL`, авторелиз). Добавлять `validum-core` в свой проект можно без
+подключения репозитория — Central есть по умолчанию:
 
-1. `./gradlew publishToMavenLocal --no-configuration-cache` на машине с ключом — артефакты и `.asc` появятся
-   в `~/.m2/repository/io/github/validum-tech/`.
-2. Собрать bundle: каталог `io/github/validum-tech/**` с jar, sources, javadoc, pom и подписями
-   упаковать в zip.
-3. Central Portal → **Publish** → загрузить zip → дождаться проверки (обычно 15–60 минут).
+```kotlin
+testImplementation("io.github.validum-tech:validum-core:0.2.0")
+```
 
-Дальше имеет смысл подключить `com.gradleup.nmcp` (Central Portal Publisher) и перевести
-этот шаг в CI — тогда публикация станет полностью автоматической.
+Что проверить после релиза: Central Portal → **Deployments** (статус `PUBLISHED`) и
+<https://repo1.maven.org/maven2/io/github/validum-tech/validum-core/> (синхронизация — от
+10 минут до пары часов). Локально без ключей: `./gradlew publishToMavenLocal`.
 
 ## Версионирование
 

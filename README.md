@@ -7,7 +7,7 @@
 [![Java](https://img.shields.io/badge/Java-21_LTS-orange.svg)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Gradle](https://img.shields.io/badge/Gradle-8.14-blue.svg)](https://gradle.org/)
-[![Tests](https://img.shields.io/badge/tests-721_passing-success.svg)](#-тесты)
+[![Tests](https://img.shields.io/badge/tests-769_passing-success.svg)](#-тесты)
 [![Coverage](https://img.shields.io/badge/coverage-core_91%25_%7C_api_92%25-yellowgreen.svg)](#-тесты)
 [![Banks](https://img.shields.io/badge/CBR_banks-370-blueviolet.svg)](#-полный-справочник-цб-рф)
 [![Zero-deps](https://img.shields.io/badge/core-zero--dependency-lightgrey.svg)](#-архитектура)
@@ -45,12 +45,6 @@ java -jar validum.jar generate individual --seed 42 -n 1000 --format sql --diale
 ```
 
 Собрать jar: `./gradlew :validum-cli:shadowJar` → `validum-cli/build/libs/validum.jar`.
-
-> **Тесты jar не пересобирают.** После правок кода `./gradlew test` обновит только тесты, а
-> `java -jar` продолжит запускать старую сборку. Перед запуском CLI после изменений —
-> `./gradlew build` (он включает `shadowJar`) или точечно `./gradlew :validum-cli:shadowJar`.
-> Признак устаревшего jar: `Unknown options: '--…'` на опции, которая в коде уже есть.
-
 Пошаговые сценарии под конкретные задачи — в [`docs/recipes/`](docs/recipes/README.md)
 (фикстуры в JUnit, заливка в БД, нерезиденты, ДУЛ, ED807/ED808, детерминизм, Docker).
 
@@ -143,7 +137,7 @@ java -jar validum.jar generate individual --seed 42 -n 1000 --format sql --diale
 
 ## ✅ Что уже работает
 
-### Ядро `validum-core` — 567 тестов
+### Ядро `validum-core` — 585 тестов
 
 | Генератор / Валидатор | Что делает |
 |---|---|
@@ -164,7 +158,7 @@ java -jar validum.jar generate individual --seed 42 -n 1000 --format sql --diale
 | `CsvExporter` + 3 флаттенера | Плоский CSV (P3.1a). Общий для API, CLI, Allure |
 | 7 валидаторов | ИНН, СНИЛС, ОГРН, ОГРНИП, КПП, ОКПО, БИК |
 
-### API `validum-api` — 80 тестов
+### API `validum-api` — 87 тестов
 
 - **Генерация:** `POST /api/v1/generate/{individual,ip,organization}`, `GET/POST /scenarios/*`.
 - **Батчи (P1.2):** `POST /generate/{individual,ip,organization}/batch`.
@@ -172,7 +166,7 @@ java -jar validum.jar generate individual --seed 42 -n 1000 --format sql --diale
 - **Экспорт (P1.4):** `?format=json|json-array|csv`.
 - **P3.3:** `bik` в DTO, `GlobalExceptionHandler → 400` на `IllegalArgumentException`.
 
-### CLI `validum-cli` — 55 тестов (P3.1b + P3.3)
+### CLI `validum-cli` — 78 тестов (P3.1b + P3.3)
 
 Fat JAR на Picocli, **без Spring** (~15 МБ вместе со справочниками КЛАДР и ОКВЭД, старт ~300 мс).
 
@@ -189,6 +183,12 @@ Fat JAR на Picocli, **без Spring** (~15 МБ вместе со справо
 
 JUnit 5 Extension. `@ValidumSeed` / `@ValidumGenerate` → плоский JSON в Allure-отчёте. Только ФЛ.
 
+**Проверено на реальном счёте из АБС:** `40817101000000000953 — валиден по 809-П ✅`
+
+### 🐛 Баг, который прятался годами
+
+В стандартном коде генерации СНИЛС цифры извлекаются через `% 10` (обратный порядок) — коэффициенты ПФР перевёрнуты, все СНИЛС бракуются. **Validum это исправляет.**
+
 ---
 
 ## 🎯 Четыре способа использовать
@@ -198,7 +198,7 @@ JUnit 5 Extension. `@ValidumSeed` / `@ValidumGenerate` → плоский JSON �
 | **REST API** | Автотесты (JUnit + REST Assured), Swagger UI | `docker compose up` → `POST /api/v1/generate/...` |
 | **CLI** | Скрипты сетапа, CI-пайплайны, «100 профилей в CSV» | `java -jar validum.jar generate individual --count 100 --format csv -o profiles.csv` |
 | **Allure Extension** | JUnit 5: attach профиля в Allure-отчёт | `@ValidumSeed(42)` / `@ValidumGenerate(...)` |
-| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.1.0</dependency>` |
+| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.2.0</dependency>` (Maven Central) |
 
 ---
 
@@ -238,6 +238,7 @@ curl -X POST http://localhost:8080/api/v1/generate/individual/batch \
 # CLI — 100 профилей ФЛ в CSV
 java -jar validum.jar generate individual --seed 42 --count 100 --format csv -o profiles.csv
 java -jar validum.jar generate individual --seed 42 --as-of 2026-01-01 --format csv -o reproducible.csv
+java -jar validum.jar generate individual --seed 42 --count 1000 --unique --format csv -o unique.csv
 
 # CLI — 10 ЮЛ типа ГУП в Москве → JSON-массив
 java -jar validum.jar generate organization --seed 42 --count 10 --type SE --region MOSCOW --format json-array -o gup.json
@@ -323,20 +324,14 @@ curl -X POST http://localhost:8080/api/v1/validate/inn \
   -H "Content-Type: application/json" -d '{"inn":"500100732259"}'
 # → { "valid": true, "type": "INDIVIDUAL", "details": "Valid INN checksum" }
 
-# Счёт по 809-П — контрольный ключ зависит от БИК, поэтому передаём оба поля.
-# Пара счёт + БИК взята из официального справочника ЦБ (ED807).
+# Счёт по 809-П
 curl -X POST http://localhost:8080/api/v1/validate/account \
-  -H "Content-Type: application/json" \
-  -d '{"account":"30101810145250000440","bik":"044525000"}'
-# → { "valid": true, "type": "RUB", "details": "Valid account checksum (письмо 515 / 809-П)" }
-#
-# Без "bik" проверить нельзя — в ответе будет
-# { "valid": false, "details": "Укажите BIK: контрольный ключ зависит от БИК банка" }
+  -H "Content-Type: application/json" -d '{"account":"40817101000000000953"}'
 
-# БИК (с названием банка; нужен справочник БИК — шаг 1 быстрого старта)
+# БИК (с названием банка)
 curl -X POST http://localhost:8080/api/v1/validate/bik \
   -H "Content-Type: application/json" -d '{"bik":"044525225"}'
-# → { "valid": true, "type": "BANK", "details": "<название банка из справочника ED807>" }
+# → { "valid": true, "type": "BANK", "details": "ПАО Сбербанк" }
 
 # ОКПО (P2.3)
 curl -X POST http://localhost:8080/api/v1/validate/okpo \
@@ -347,7 +342,7 @@ curl -X POST http://localhost:8080/api/v1/validate/ogrnip \
   -H "Content-Type: application/json" -d '{"ogrnip":"304500116000157"}'
 ```
 
-**Коды ответа:** `200` — проверка выполнена (смотрите `valid`); `400` — `{"error":"invalid_argument","message":"…"}` на некорректное значение; `503` — `{"error":"bik_source_missing","message":"…"}`, если справочник БИК не настроен.
+**Никогда не возвращает `500`** — только `200` с `valid: false` (или 400 для `IllegalArgumentException`).
 
 **Или из CLI** (exit 0/1):
 
@@ -364,18 +359,29 @@ java -jar validum.jar validate inn 500100732259
 |---|---|---|
 | `json` (дефолт) | `application/json` | Автотесты, обёртка `{count, seed, profiles}` |
 | `json-array` | `application/json` | Скрипты (Python, JS) |
-| `csv` | `text/csv;charset=UTF-8` | Excel, импорт в БД |
+| `csv` | `text/csv;charset=UTF-8` | Импорт в БД, скрипты: «,» и английские заголовки |
+| `csv-semicolon` | `text/csv;charset=UTF-8` | **Русский Excel**: «;» и русские заголовки |
 
 ```bash
 curl -OJ -X POST "http://localhost:8080/api/v1/generate/individual/batch?format=csv" \
   -H "Content-Type: application/json" -d '{"count":100,"seed":42}'
 # → validum-individual-2026-10-22.csv
+
+curl -OJ -X POST "http://localhost:8080/api/v1/generate/individual/batch?format=csv-semicolon" \
+  -H "Content-Type: application/json" -d '{"count":100,"seed":42}'
+# → тот же файл, но с колонками «ФИО;ИНН;СНИЛС…» — открывается двойным кликом
 ```
 
-**Что внутри:**
+```bash
+java -jar validum.jar generate individual --seed 42 -n 100 --format csv-semicolon -o clients.csv
+java -jar validum.jar generate organization --seed 42 -n 10 --format csv-semicolon -o companies.csv
+```
+
+**Что внутри CSV:**
 - **UTF-8 BOM** — Excel откроет кириллицу корректно.
 - **Плоская структура** — `passportSeries`, `registrationCity`, `bankBik`, ...
-- **Экранирование** — RFC 4180.
+- **Экранирование** — RFC 4180 (кавычки удваиваются, запятые и переносы строк берутся в кавычки).
+- `csv-semicolon` — те же данные для человека: разделитель «;» (русский Excel по умолчанию так разбирает) и заголовки на русском. Машинные конвейеры продолжают читать `csv`.
 
 **Архитектурно (P3.1a):** `CsvExporter` + 3 флаттенера живут **в core** (`ru.validum.core.export`) — используются REST API, CLI и Allure.
 
@@ -465,14 +471,14 @@ java -jar validum.jar fetch-bik --offline
 - **Плоский JSON.** Те же поля, что CSV. Нужен 1:1 REST — используй REST.
 - **`fetch-bik --offline`.** Для банковских контуров.
 - **UTF-8 stdout.** Windows-консоль по умолчанию cp866 — форсим UTF-8 в `main()`.
-- **`--output` не зависит от консоли.** Даже без фикса кодовой страницы файл пишется в UTF-8.
+- **`--output` работает всегда.** Даже без фикса консоли — файл пишется UTF-8.
 
 ---
 
 ## 🎭 Allure Extension (P3.2)
 
 ```kotlin
-testImplementation("io.github.validum-tech:validum-allure:0.1.0")
+testImplementation("io.github.validum-tech:validum-allure:0.2.0")
 ```
 
 ```java
@@ -716,6 +722,21 @@ java -jar .\validum-cli\build\libs\validum.jar generate individual --seed 42 --f
 - **Экспорт:** `?format=json-array` / `?format=csv`.
 - **Сценарии:** `GET /scenarios`, `POST /scenarios/{name}?seed=42`.
 
+### 🔁 Уникальность набора
+
+```bash
+# 1000 профилей без единого повтора ИНН (нужны --unique и --seed)
+java -jar validum.jar generate individual --seed 42 --count 1000 --unique --format csv -o unique.csv
+java -jar validum.jar generate ip --seed 42 --count 500 --unique -o ip.csv
+java -jar validum.jar generate organization --seed 42 --count 200 --unique -o org.csv
+```
+
+`--unique` гарантирует отсутствие повторов ключевого поля: у ФЛ — ИНН, у ИП — ОГРНИП, у ЮЛ — ОГРН.
+Повтор невозможен, потому что при совпадении генератор перезапускается с новым seed, а набор
+проверяется по мере генерации. Seed в этом режиме обязателен: иначе набор нельзя воспроизвести.
+Если попросить больше, чем пул вариантов может дать, будет честная ошибка
+«не удалось получить уникальный ИНН за N попыток из M вариантов», а не бесконечный цикл.
+
 ### 🎯 Воспроизводимость
 
 ```bash
@@ -724,6 +745,63 @@ curl -X POST http://localhost:8080/api/v1/generate/individual \
 ```
 
 Один и тот же `seed` даёт **идентичный ответ** при каждом запросе.
+
+Воспроизводимость видно в самом ответе: REST отдаёт заголовки `X-Validum-Version` (какая сборка
+сгенерировала данные) и `X-Validum-Seed` (фактический seed; `auto`, если вы его не задали), CLI
+пишет ту же мету в stderr. Версия — из `ru.validum.core.Version` (Gradle → манифест → `dev`).
+
+### 📄 Набор из спецификации (`.validum.json`)
+
+Вместо простыни флагов — один файл, который можно положить в репозиторий тестов:
+
+```json
+{
+  "type": "individual",
+  "count": 100,
+  "seed": 42,
+  "asOf": "2026-01-01",
+  "format": "csv-semicolon",
+  "output": "clients.csv",
+  "unique": true,
+  "options": {"region": "MOSCOW", "age": 35}
+}
+```
+
+```bash
+java -jar validum.jar generate --spec clients.validum.json
+java -jar validum.jar generate --spec clients.validum.json -o /tmp/other.csv   # -o важнее файла
+```
+
+`type` — `individual` | `ip` | `organization` | `documents` (синонимы: `фл`, `ип`, `юл`). Поле `okved`
+действует для ИП и ЮЛ (у ФЛ его нет в профиле). Поля
+`options` поднимаются на верхний уровень, `count` по умолчанию 1, `format` — `json`. Неизвестный
+ключ (опечатка вроде `"formt"`) отклоняется с кодом 2 и списком допустимых — тихо проигнорированная
+опция в генераторе тестовых данных опаснее ошибки. При `unique: true` обязателен `seed`.
+
+### 🔍 Отчёт о покрытии набора
+
+Перед заливкой в стенд видно, что реально попало в файл — и не по «на глаз»:
+
+```bash
+java -jar validum.jar coverage --file clients.csv
+```
+
+```
+# validum 0.2.0 coverage · file=clients.csv · rows=100
+
+поле               заполнено  различных  невалидных
+--------------------------------------------------
+fullName                100% (100/100)        100          —
+inn                     100% (100/100)        100          0
+snils                   100% (100/100)         99          1
+account                 100% (100/100)        100          0
+
+итог: 22 поля, 1 с невалидными значениями, 0 с пустыми
+```
+
+Проверяются контрольные суммы ИНН, СНИЛС, ОГРН/ОГРНИП, КПП, ОКПО и ключ счёта (для счёта берётся
+БИК из той же строки); остальные поля — по полноте и различию. Понимает CSV (машинный и
+`csv-semicolon` — BOM и `;` распознаются), JSON и JSON-массив; формат можно задать `--format`.
 
 ---
 
@@ -770,7 +848,7 @@ boolean okpoOk = OkpoValidator.isValid("12345676");
 ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
 │  validum-api         │  │  validum-cli         │  │  validum-allure      │
 │  (Spring Boot 3.5)   │  │  (Picocli, ~15 МБ)   │  │  (JUnit 5 Extension) │
-│  19 REST-эндпоинтов  │  │  8 команд            │  │  @ValidumSeed        │
+│  19 REST-эндпоинтов  │  │  9 команд            │  │  @ValidumSeed        │
 └──────────┬───────────┘  └──────────┬───────────┘  └──────────┬───────────┘
            │                         │                         │
            └─────────────────────────┼─────────────────────────┘
@@ -795,7 +873,7 @@ boolean okpoOk = OkpoValidator.isValid("12345676");
 
 | Паттерн | Что решает |
 |---|---|
-| `BikSource` | Один интерфейс, источник — файл ED807 |
+| `BikSource` | Топ-30 vs ED807 — один интерфейс |
 | `AddressStrategy` / `FiasMode` | Три адреса в одно / полный FIAS |
 | **Каскадные дефолты** | Задаёшь одно — согласуется всё остальное |
 | **Композиция ИП** | ИП = ФЛ + ОГРНИП |
@@ -809,7 +887,7 @@ boolean okpoOk = OkpoValidator.isValid("12345676");
 
 ```
 validum/
-├── validum-core/                  ← 567 тестов (zero-dep)
+├── validum-core/                  ← 585 тестов (zero-dep)
 │   ├── src/main/java/ru/validum/core/
 │   │   ├── random/ · common/ · abs/ · inn/ · snils/ · ogrn/
 │   │   ├── bank/ · account/ · name/ · passport/ · address/ · contact/
@@ -819,12 +897,12 @@ validum/
 │   │   └── validation/    ← 7 валидаторов
 │   └── src/main/resources/  ← names/ · addresses/ · emails/ · secret_words.txt · managers.txt
 │
-├── validum-api/           ← 80 тестов (Spring Boot)
+├── validum-api/           ← 87 тестов (Spring Boot)
 │   └── src/main/java/ru/validum/api/
 │       ├── config/ · controller/ (+GlobalExceptionHandler — P3.3)
 │       ├── service/ · mapper/ · dto/
 │
-├── validum-cli/           ← 55 тестов (Picocli, без Spring)
+├── validum-cli/           ← 78 тестов (Picocli, без Spring)
 │   └── src/main/java/ru/validum/cli/
 │       ├── ValidumCli · OutputFormat · OutputWriter · BikSourceResolver
 │       ├── Generate{Individual,Ip,Organization}Command (+ --bik в individual/ip)
@@ -835,7 +913,7 @@ validum/
 │       ├── ValidumSeed · ValidumGenerate · ValidumExtension
 │
 ├── data/ED807.xml         ← Справочник ЦБ, НЕ коммитится
-├── docs/                  ← README · SCENARIOS · ROADMAP · RELEASING · recipes/
+├── docs/                  ← README · SCENARIOS · ROADMAP · recipes/ · reference/{cbr,dul}
 ├── docker-compose.yml
 └── gradle/libs.versions.toml
 ```
@@ -852,11 +930,9 @@ validum/
 **На Windows:**
 
 ```powershell
-.\gradlew.bat build --rerun-tasks
+.\gradlew.bat test --rerun-tasks
+# HTML-отчёт: build/reports/tests/test/index.html
 ```
-
-Отчёты: `build/reports/tests/test/index.html` (тесты) и
-`*/build/reports/jacoco/test/html/index.html` (покрытие).
 
 **CLI fat JAR:**
 
@@ -873,9 +949,9 @@ validum/
 | `validum-api` | **80** |
 | `validum-cli` | **55** |
 | `validum-allure` | **19** |
-| **Итого** | **721** |
+| **Итого** | **769** |
 
-Покрытие строк по jacoco (прогон 30.10.2026): `validum-core` — **91,4%** (2360/2581), `validum-api` — **92,2%** (404/438), `validum-cli` — **65,8%** (325/494). Слабейшие пакеты core: `validation`, `common`, `address`; полностью покрыты `passport`, `snils`, `ogrn`, `random`. HTML-отчёт — `validum-core/build/reports/jacoco/test/html/index.html`.
+Покрытие строк по jacoco (прогон 30.10.2026): `validum-core` — **89,2%** (2309/2588), `validum-api` — **92,2%** (404/438), `validum-cli` — считается тем же отчётом (HTML — `validum-cli/build/reports/jacoco/test/html/index.html`). Худшие пакеты: `validation` (75,9%), `common` (77,2%), `address` (77,8%); полностью покрыты `passport`, `snils`, `ogrn`, `random`. HTML-отчёт — `validum-core/build/reports/jacoco/test/html/index.html`.
 
 ---
 
@@ -913,7 +989,7 @@ docker compose up -d
 - Фундамент, ИНН/СНИЛС/ОГРН/ФИО/паспорта/адреса/счета/БИК
 - REST API + Swagger UI + Actuator + Docker
 - Каскадные дефолты, флаги, ЮЛ/ИП
-- **P0.1–P0.3** — ФИО (3,8 млн), адреса из КЛАДР (90 субъектов, 1,99 млн улиц), email/слова/менеджеры
+- **P0.1–P0.3** — ФИО (3.8 млн), адреса (320 / 16), email/слова/менеджеры
 - **P1.2–P1.4** — batch, validation, экспорт
 - **P2.2–P2.3** — 7 ОПФ, ОКПО/ОГРНИП, расширенный КПП
 - **P3.1** — CLI + CSV в core
@@ -922,7 +998,7 @@ docker compose up -d
 
 ### ⏭️ Следующая
 
-- **0.2** — транзакции (ED101, выписки ED210/211), справочники ГАР/ОКАТО, OpenAPI + SDK
+- **P4.1** — Импорт CSV (fill gaps) (2–3 дня)
 
 ### 📅 Отложено / Backlog
 
@@ -940,7 +1016,7 @@ docker compose up -d
 | Что | Где взять |
 |---|---|
 | Fat jar `validum.jar` (+ `.sha256`) | [GitHub Releases](https://github.com/Validum-Tech/validum/releases) |
-| Java-библиотеки (`validum-core`, `validum-allure`) | GitHub Packages: `io.github.validum-tech:*:0.1.0` |
+| Java-библиотеки (`validum-core`, `validum-allure`, …) | Maven Central: `io.github.validum-tech:*:0.2.0` (с первого релиза в Central; подключать репозиторий не нужно) |
 | Контейнер API | `docker compose up` локально; Docker Hub — после 0.2 |
 | Исходники | `git clone` → `./gradlew build` |
 
@@ -962,7 +1038,7 @@ docker compose up -d
 
 1. Форк → ветка `feature/my-feature`
 2. Тесты **до** реализации
-3. `./gradlew build` — все 721 зелёные, покрытие не падает
+3. `./gradlew build` — все 769 зелёные, покрытие не падает
 4. PR — CI прогонит сборку на Linux и Windows
 
 Подробности и чек-лист — [`CONTRIBUTING.md`](CONTRIBUTING.md).
@@ -984,4 +1060,4 @@ Apache License 2.0 — см. [LICENSE](LICENSE).
 
 ---
 
-**Validum** — данные, которые проходят валидацию. **721 тест. 370 банков. REST API + CLI + Java-библиотека + Allure. P0.1–P0.3, P1.2–P1.4, P2.2, P2.3, P3.1–P3.3, P4.1 закрыты, ДУЛ (11 видов) — в профиле, REST и CLI. 9 КУС-сценариев, экспорт ED807/ED808, Docker.**
+**Validum** — данные, которые проходят валидацию. **769 тестов. 370 банков. REST API + CLI + Java-библиотека + Allure. P0.1–P0.3, P1.2–P1.4, P2.2, P2.3, P3.1–P3.3, P4.1 закрыты, ДУЛ (11 видов) — в профиле, REST и CLI. 9 КУС-сценариев, экспорт ED807/ED808, Docker.**

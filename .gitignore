@@ -20,6 +20,10 @@ Thumbs.db
 *.swp
 *~
 
+# Python (скрипты инструментов)
+__pycache__/
+*.pyc
+
 # Логи и env
 *.log
 logs/
