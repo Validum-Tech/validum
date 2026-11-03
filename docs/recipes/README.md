@@ -280,5 +280,5 @@ curl -X POST "http://localhost:8080/api/v1/generate/individual" -H "Content-Type
 
 - Полный REST — `docs/README.md` и Swagger UI (`/swagger-ui.html`).
 - Каскады (регион → ОПФ → КПП → адрес) — `docs/SCENARIOS.md`.
-- Форматы ЦБ и маски реквизитов — УФЭБС 2026.09.0; реализация в `validum-core/src/main/java/ru/validum/core/{bank,account,export}`.
-- Виды документов (ДУЛ) и их форматы — `validum-core/src/main/java/ru/validum/core/document` и `docs/SCENARIOS.md`.
+- Форматы ЦБ и маски — нормативные документы ЦБ РФ (УФЭБС 2026.09.0).
+- ДУЛ и источники форматов — приказы МВД/МО и постановления Правительства РФ.

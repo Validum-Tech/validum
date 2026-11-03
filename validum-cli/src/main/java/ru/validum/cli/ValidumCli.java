@@ -19,6 +19,7 @@ import ru.validum.core.bank.BikSourceNotFoundException;
     ParticipantsCommand.class,
     ScenariosCommand.class,
     ExportCommand.class,
+    CoverageCommand.class,
     VersionCommand.class,
   }
 )

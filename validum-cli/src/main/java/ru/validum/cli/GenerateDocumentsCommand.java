@@ -40,7 +40,7 @@ public final class GenerateDocumentsCommand implements Callable<Integer> {
   int count;
 
   @Option(names = "--format", defaultValue = "json",
-    description = "Формат: json | json-array | csv")
+    description = "Формат: json | json-array | csv | csv-semicolon (русский Excel) | sql")
   String format;
 
   @Option(names = "--dialect", description = "SQL-диалект: postgres | oracle | mysql")
@@ -87,6 +87,7 @@ public final class GenerateDocumentsCommand implements Callable<Integer> {
       }
     }
 
+    OutputMeta.print(System.err, baseSeed, asOfDate, seed == null);
     OutputWriter.of(output, OutputFormat.fromString(format), dialect, table, !noDdl)
       .write(rows, baseSeed);
     return 0;

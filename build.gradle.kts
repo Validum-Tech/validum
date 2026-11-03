@@ -1,92 +1,67 @@
-import org.gradle.api.plugins.JavaPluginExtension
-import org.gradle.api.publish.PublishingExtension
-import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
-import org.gradle.plugins.signing.SigningExtension
+
+plugins {
+    // Публикация библиотек в Maven Central (Central Portal).
+    // Плагин объявлен здесь, применяется только к модулям-библиотекам (см. subprojects).
+    id("com.vanniktech.maven.publish") version "0.30.0" apply false
+}
 
 allprojects {
     // groupId: GitHub-организация Validum-Tech (подтверждается через GitHub при публикации
     // в Maven Central). Альтернатива при наличии домена — `tech.validum` + DNS TXT на validum.tech.
     group = "io.github.validum-tech"
-    version = "0.1.0"
+    // Версия — из gradle.properties (единственный источник правды), фолбэк — на случай
+    // запуска без файла свойств.
+    version = providers.gradleProperty("version").getOrElse("0.1.0")
 }
 
 // ---------------------------------------------------------------------------------------------
-// Публикация библиотек (Maven Central / Maven Local / GitHub Packages)
+// Публикация артефактов
 //
-// В Maven идут ДВЕ библиотеки: validum-core (ядро) и validum-allure (JUnit-расширение).
-// Не публикуются:
-//   validum-cli — приложение: fat jar в GitHub Releases (shadow добавляет второй jar,
-//                 публикация падала бы на дубликате артефакта);
-//   validum-api — сервис, а не библиотека: Docker-образ + boot-jar в GitHub Releases.
-//                 Публиковать Spring-приложение в Maven смысла нет — его запускают, а не встраивают.
+// Публикуются две библиотеки: validum-core и validum-allure. validum-cli и validum-api —
+// приложения, они уходят в GitHub Release и в реестр не попадают.
 //
-// Для подписи нужны секреты (CI) или ~/.gradle/gradle.properties:
-//   signingKey      — armored PGP-ключ (-----BEGIN PGP PRIVATE KEY BLOCK-----…)
-//   signingPassword — пароль ключа
+// Куда: Maven Central через Central Portal (vanniktech/maven-publish-plugin, SonatypeHost.CENTRAL_PORTAL).
+// Что нужно для боевой публикации:
+//   CENTRAL_USERNAME / CENTRAL_TOKEN — токен Central Portal (CI: секреты);
+//   signingInMemoryKey / signingInMemoryKeyPassword — PGP-ключ и его пароль
+//   (CI: секреты SIGNING_KEY / SIGNING_PASSWORD через ORG_GRADLE_PROJECT_*).
 //
-// Локальная проверка без секретов:  ./gradlew publishToMavenLocal --no-configuration-cache
+// Без ключей всё работает локально: ./gradlew publishToMavenLocal (подпись не выполняется).
+// Порядок получения ключей и токена — docs/RELEASING.md.
 // ---------------------------------------------------------------------------------------------
 subprojects {
-    pluginManager.apply("maven-publish")
-    pluginManager.apply("signing")
-
-    val signingKey = providers.gradleProperty("signingKey")
-    val signingPassword = providers.gradleProperty("signingPassword")
-
-    afterEvaluate {
-        // Публикуем только библиотеки: см. комментарий выше.
-        if (!plugins.hasPlugin("java") || name !in setOf("validum-core", "validum-allure")) {
-            return@afterEvaluate
+    // Javadoc пишем по-русски и не валим сборку на строгом doclint
+    tasks.withType<Javadoc>().configureEach {
+        (options as StandardJavadocDocletOptions).apply {
+            encoding = "UTF-8"
+            charSet = "UTF-8"
+            addStringOption("Xdoclint:none", "-quiet")
         }
+    }
 
-        extensions.configure<JavaPluginExtension> {
-            withSourcesJar()
-            withJavadocJar()
-        }
+    if (name == "validum-core" || name == "validum-allure") {
+        apply(plugin = "com.vanniktech.maven.publish")
 
-        // Javadoc пишем по-русски и не валим сборку на строгом doclint
-        tasks.withType<Javadoc>().configureEach {
-            (options as StandardJavadocDocletOptions).apply {
-                encoding = "UTF-8"
-                charSet = "UTF-8"
-                addStringOption("Xdoclint:none", "-quiet")
+        // Подпись включается только когда ключ реально задан: локальная сборка без секретов работает.
+        val signingReady =
+            listOf("signingInMemoryKey", "signingKey").any { providers.gradleProperty(it).isPresent } ||
+                listOf("ORG_GRADLE_PROJECT_signingInMemoryKey", "ORG_GRADLE_PROJECT_signingKey")
+                    .any { !System.getenv(it).isNullOrBlank() }
+
+        extensions.configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
+            publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL, true)
+            if (signingReady) {
+                signAllPublications()
             }
-        }
-
-        // Только строки: pom не должен захватывать Project/Configuration, иначе ломается
-        // configuration cache (Gradle 8.14: «cannot serialize object of type DefaultProject»).
-        val moduleName = name
-        val pomDescription =
-            "Validum — генератор валидных тестовых данных для российского финтеха"
-        val projectUrl = "https://github.com/Validum-Tech/validum"
-        val scmUrl = "scm:git:https://github.com/Validum-Tech/validum.git"
-        val scmDevUrl = "scm:git:ssh://git@github.com/Validum-Tech/validum.git"
-
-        val publishing = extensions.getByType<PublishingExtension>()
-
-        publishing.repositories {
-            maven {
-                name = "GitHubPackages"
-                url = uri("https://maven.pkg.github.com/Validum-Tech/validum")
-                val actor = System.getenv("GITHUB_ACTOR")
-                val token = System.getenv("GITHUB_TOKEN")
-                if (actor != null && token != null) {
-                    credentials {
-                        username = actor
-                        password = token
-                    }
-                }
-            }
-        }
-
-        val publication = publishing.publications.create<MavenPublication>("maven") {
-            from(components["java"])
+            coordinates("io.github.validum-tech", project.name, project.version.toString())
             pom {
-                name.set(moduleName)
-                description.set(pomDescription)
-                url.set(projectUrl)
+                name.set(project.name)
+                description.set(
+                    "Validum — генератор валидных тестовых данных для российского финтеха",
+                )
+                url.set("https://github.com/Validum-Tech/validum")
                 licenses {
                     license {
                         name.set("Apache License 2.0")
@@ -101,21 +76,12 @@ subprojects {
                     }
                 }
                 scm {
-                    connection.set(scmUrl)
-                    developerConnection.set(scmDevUrl)
-                    url.set(projectUrl)
+                    connection.set("scm:git:https://github.com/Validum-Tech/validum.git")
+                    developerConnection.set(
+                        "scm:git:ssh://git@github.com/Validum-Tech/validum.git",
+                    )
+                    url.set("https://github.com/Validum-Tech/validum")
                 }
-            }
-        }
-
-        extensions.configure<SigningExtension> {
-            // Пустые значения (например, незаданные секреты в CI) — это «подписи нет»,
-            // а не «подписать пустым ключом»: иначе publish падает на первом же релизе.
-            val key = signingKey.orNull
-            val password = signingPassword.orNull
-            if (!key.isNullOrBlank() && !password.isNullOrBlank()) {
-                useInMemoryPgpKeys(key, password)
-                sign(publication)
             }
         }
     }

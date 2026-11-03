@@ -14,7 +14,7 @@ import ru.validum.core.bank.Participant;
  *
  * <p>Отличия от ED807, которые учтены: {@code CreationReason} — элемент (а не атрибут), нет
  * {@code DirectoryVersion}, есть {@code ParticipantProfile} с {@code AccountsInfo}. Шаблон —
- * {@code официальные примеры ЦБ (ED808)}.
+ * официальные примеры ЦБ РФ к ED808 и схему {@code cbr_ed808_v2026.09.0.xsd}.
  *
  * <p>Как и ED807, файл структурно корректен и воспроизводим, но не является банковским документом.
  */

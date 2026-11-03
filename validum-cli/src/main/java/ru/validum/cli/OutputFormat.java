@@ -1,9 +1,12 @@
 package ru.validum.cli;
 
 public enum OutputFormat {
+  /** Машинный CSV: UTF-8 с BOM, «,», английские заголовки (стабильно для скриптов). */
+  CSV,
+  /** CSV для русского Excel: UTF-8 с BOM, «;», русские заголовки. */
+  CSV_SEMICOLON,
   JSON,
   JSON_ARRAY,
-  CSV,
   SQL;
 
   public static OutputFormat fromString(String s) {
@@ -14,9 +17,10 @@ public enum OutputFormat {
       case "json" -> JSON;
       case "json_array" -> JSON_ARRAY;
       case "csv" -> CSV;
+      case "csv_semicolon", "csv_excel" -> CSV_SEMICOLON;
       case "sql", "ddl" -> SQL;
       default -> throw new IllegalArgumentException(
-        "Неизвестный формат: '" + s + "'. Допустимо: json, json-array, csv, sql");
+        "Неизвестный формат: '" + s + "'. Допустимо: json, json-array, csv, csv-semicolon, sql");
     };
   }
 }

@@ -1,6 +1,6 @@
 name: Release
 
-# Запуск: git tag v0.1.0 && git push origin v0.1.0
+# Запуск: git tag v0.2.0 && git push origin v0.2.0
 on:
   push:
     tags:
@@ -8,12 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Тег релиза (например, v0.1.0)"
+        description: "Тег релиза (например, v0.2.0)"
         required: true
 
 permissions:
   contents: write   # создание GitHub Release
-  packages: write   # публикация в GitHub Packages
 
 concurrency:
   group: release-${{ github.ref }}
@@ -24,6 +23,14 @@ jobs:
     name: Сборка и публикация
     runs-on: ubuntu-latest
     timeout-minutes: 25
+
+    # Секреты Central Portal видны шагам через env. Пустая строка = секрет не задан,
+    # и шаг публикации в Maven Central пропускается (релиз всё равно соберётся).
+    env:
+      CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+      CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}
+      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -44,24 +51,6 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      # Секреты для Maven Central: если они не заданы, подпись просто не выполняется.
-      - name: Build и тесты
-        run: ./gradlew build --no-daemon
-
-      # Перевыпуск тега на той же версии: пакет уже лежит в GitHub Packages,
-      # повторная публикация отвечает 409 — это не повод валить релиз.
-      - name: Публикация в GitHub Packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.SIGNING_KEY }}
-          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}
-        run: |
-          if ./gradlew publish --no-daemon --no-configuration-cache; then
-            echo "Опубликовано в GitHub Packages."
-          else
-            echo "::warning::Публикация не удалась — вероятно, версия уже опубликована. Релиз продолжается."
-          fi
-
       - name: Определить версию
         id: version
         run: |
@@ -71,6 +60,25 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Ревизия: $TAG (версия $VERSION)"
+
+      - name: Сборка и тесты
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ./gradlew build -Pversion="$VERSION" --no-daemon
+
+      # Публикация в Maven Central: только когда заданы токен и PGP-ключ.
+      # artifactId: validum-core и validum-allure (см. корневой build.gradle.kts).
+      - name: Публикация в Maven Central
+        if: env.CENTRAL_USERNAME != '' && env.SIGNING_KEY != ''
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.CENTRAL_TOKEN }}
+        run: |
+          ./gradlew publishToMavenCentral -Pversion="$VERSION" \
+            --no-daemon --no-configuration-cache
 
       - name: Подготовить артефакты релиза
         env:
@@ -95,10 +103,6 @@ jobs:
         run: |
           NOTES="$(awk '/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md)"
           if [ -z "$NOTES" ]; then NOTES="Validum $VERSION — см. CHANGELOG.md"; fi
-          # Идемпотентно: перевыпуск тега не должен падать на существующем релизе
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release delete "$TAG" --yes
-          fi
           gh release create "$TAG" \
             "dist/validum-${VERSION}.jar" \
             "dist/validum-${VERSION}.jar.sha256" \

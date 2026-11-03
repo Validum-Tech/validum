@@ -12,7 +12,7 @@ public final class VersionCommand implements Callable<Integer> {
 
   @Override
   public Integer call() {
-    System.out.println("validum 0.1.0");
+    System.out.println("validum " + BuildInfo.version());
     System.out.println("Java:   " + System.getProperty("java.version"));
     System.out.println("Vendor: " + System.getProperty("java.vendor"));
     System.out.println("OS:     " + System.getProperty("os.name")

@@ -53,20 +53,32 @@ public final class OutputWriter {
       case JSON -> toJsonWrapper(rows, seed);
       case JSON_ARRAY -> JSON.writeValueAsString(rows);
       case CSV -> CsvExporter.toCsv(rows);
-      case SQL -> SqlExporter.script(table, rows, dialect, withDdl);
+      case CSV_SEMICOLON -> CsvExporter.toCsv(rows, ';', true);
+      case SQL -> sqlWithHeader(rows, seed);
     };
     writeContent(content);
   }
 
+  private String sqlWithHeader(List<Map<String, String>> rows, Long seed) {
+    String script = SqlExporter.script(table, rows, dialect, withDdl);
+    if (script.isEmpty()) {
+      return script;
+    }
+    String header = "-- validum " + BuildInfo.version() + ", seed=" + (seed == null ? "auto" : seed);
+    return header + "\n\n" + script;
+  }
+
   private void writeContent(String content) throws IOException {
+    byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
     if (outputPath == null) {
       PrintStream out = System.out;
-      out.print(content);
+      out.write(bytes);
       if (!content.endsWith("\n") && !content.endsWith("\r\n")) {
         out.println();
       }
+      out.flush();
     } else {
-      Files.writeString(outputPath, content, StandardCharsets.UTF_8);
+      Files.write(outputPath, bytes);
       System.err.println("Записано в файл: " + outputPath.toAbsolutePath());
     }
   }

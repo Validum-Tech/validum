@@ -23,6 +23,8 @@ tasks.withType<Test>().configureEach {
         "validum.bik.file",
         file("src/test/resources/bik-sample.xml").absolutePath,
     )
+    // Версия из gradle.properties: в тестах манифеста нет, BuildInfo читает это свойство.
+    systemProperty("validum.version", project.version.toString())
 }
 
 application {
@@ -60,6 +62,8 @@ tasks.shadowJar {
     archiveVersion.set("")
     manifest {
         attributes["Main-Class"] = "ru.validum.cli.ValidumCli"
+        // Версия читается BuildInfo: единственный источник — gradle.properties.
+        attributes["Implementation-Version"] = project.version.toString()
     }
     minimize()
 }

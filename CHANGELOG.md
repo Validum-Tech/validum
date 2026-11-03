@@ -2,6 +2,38 @@
 
 Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии — [SemVer](https://semver.org/lang/ru/).
 
+## [Unreleased] — 0.3.0
+
+## [0.2.0] — 2026-11-03
+
+Пакет «Набор»: данные воспроизводимы, уникальны и читаемы человеком без шаманства.
+
+### Added
+
+- **Версия и seed в выводе.** CLI пишет в stderr строку `# validum <версия> · seed=N · asOf=YYYY-MM-DD`
+  и подсказку с готовой командой `--seed`, если seed сгенерирован автоматически. REST отдаёт заголовки
+  `X-Validum-Version` и `X-Validum-Seed`; SQL-скрипт начинается с `-- validum <версия>, seed=N`.
+  Версия берётся из одного места — `ru.validum.core.Version` (системное свойство `validum.version`
+  из Gradle → манифест jar → `dev`), а не хардкод. Заголовки отдают все генеративные эндпоинты,
+  включая батчи и CSV.
+- **Уникальность с проверкой ёмкости** (`--unique` в `generate individual|ip|organization`).
+  Дубликаты ИНН (ФЛ), ОГРНИП (ИП) и ОГРН (ЮЛ) не выпускаются: при совпадении профиль
+  перегенерируется с новым seed. В режиме `--unique` seed обязателен — иначе набор невоспроизводим.
+  При исчерпании вариантов — ошибка «не удалось получить уникальный ИНН за 1000 попыток
+  из M вариантов», без бесконечного цикла.
+- **`csv-semicolon` — CSV для русского Excel**: UTF-8 с BOM, разделитель «;» и русские заголовки
+  («ФИО;ИНН;СНИЛС…»). CLI `--format csv-semicolon`, REST `?format=csv-semicolon`. Машинный `csv`
+  не изменился: «,» и английские заголовки.
+- **Спецификация набора `.validum.json` (C1)**: `validum generate --spec set.validum.json` —
+  `type` (или русский синоним `фл`/`ип`/`юл`), `count`, `seed`, `asOf`, `format`, `output`, `unique`,
+  `options{region, age, gender, bik, okved, documentTypes…}`. Исполняется тем же кодом, что и флаги;
+  неизвестный ключ отклоняется с кодом 2, при `unique` без `seed` — отказ.
+- **Регрессионная сетка (N1)**: `PropertyInvariantsTest` сверяет валидаторы с независимой
+  реализацией алгоритмов (ИНН, СНИЛС, ОГРН/ОГРНИП, контрольный ключ счёта по письму № 515) на
+  случайных данных и проверяет свойства сгенерированных профилей; `GoldenFixturesTest` фиксирует
+  SHA-256 набора для пары `seed + asOf` — дрейф справочников или порядка колонок ловится сразу.
+  Обновление эталона — `./gradlew :validum-core:test -Dvalidum.golden.update=true`.
+
 ## [0.1.0] — 2026-10-30
 
 Первая публичная версия: генерация валидных данных для российского финтеха, self-hosted, без LLM.
@@ -51,6 +83,16 @@
 - `Dockerfile` (multi-stage, JRE 21) и `docker-compose.yml` с монтированием справочника ЦБ.
 - GitHub Actions: сборка, тесты, публикация артефактов и сводки по модулям.
 - 721 тест (567 core + 80 api + 55 cli + 19 allure), 0 падений.
+- **Отчёт о покрытии набора** — `coverage --file <csv|json>`. Показывает, во что превратился файл:
+  сколько строк заполнено, сколько значений различных и проходят ли контрольные суммы ИНН, СНИЛС,
+  ОГРН/ОГРНИП, КПП, ОКПО и ключ счёта (БИК берётся из той же строки набора). Понимает «дружелюбный»
+  CSV (BOM + `;`), машинный CSV, JSON и JSON-массив — формат можно задать `--format`. Ядро отчёта —
+  `ru.validum.core.report.Coverage`, оболочка — `ru.validum.cli.CoverageCommand`.
+- **Публикация в Maven Central.** Релиз больше не уходит в GitHub Packages: `validum-core` и
+  `validum-allure` публикуются через Central Portal (`com.vanniktech.maven.publish`, авторелиз).
+  Шаг в `release.yml` включается только при заданных секретах — без них релиз собирается и
+  выкладывается как обычно, но пакет в Central не отправляется. Координаты для потребителей:
+  `io.github.validum-tech:validum-core:0.2.0` без подключения репозитория.
 
 ### Changed
 
@@ -80,8 +122,12 @@
 | Что | Где |
 |---|---|
 | `validum-0.1.0.jar` + `.sha256` | GitHub Releases |
-| `io.github.validum-tech:validum-core:0.1.0` и `io.github.validum-tech:validum-allure:0.1.0` | GitHub Packages; Maven Central — после настройки секретов |
+| `io.github.validum-tech:validum-core:0.2.0` (и `validum-allure`) | Maven Central |
 | Исходники | `git clone` → `./gradlew build` |
 
 Требования: JDK 21. Справочник `data/ED807.xml` обязателен — `validum fetch-bik -o data/ED807.xml`.
 Порядок выпуска версии — `docs/RELEASING.md`.
+
+[Unreleased]: https://github.com/Validum-Tech/validum/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Validum-Tech/validum/releases/tag/v0.2.0
+[0.1.0]: https://github.com/Validum-Tech/validum/releases/tag/v0.1.0
