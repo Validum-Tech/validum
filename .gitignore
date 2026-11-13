@@ -45,3 +45,10 @@ data/
 
 # Allure: генерируемые результаты тестов (в git не держим)
 allure-results/
+
+# Ручные артефакты проверок (не в git)
+/scratch/
+/idx.csv
+/mil.csv
+/bad-*.json
+/bad-set.csv

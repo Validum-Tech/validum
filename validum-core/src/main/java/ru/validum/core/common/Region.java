@@ -167,6 +167,37 @@ public enum Region {
     return cityType;
   }
 
+  /** Как регион называют в реквизитах выдавшего органа. */
+  public record Department(String ufms, String military) {}
+
+  /**
+   * Падежи для «кем выдан»: {@code ufms} — после «по …» (предложный, «по Московской области»),
+   * {@code military} — родительный («Московской области», «г. Москвы»).
+   *
+   * <p>Нужны, чтобы реквизиты документа не спорили с пропиской: человек с регистрацией в
+   * Московской области не получает паспорт, выданный в Екатеринбурге.
+   */
+  public Department department() {
+    return switch (this) {
+      case MOSCOW -> new Department("г. Москве", "г. Москвы");
+      case SPB -> new Department("г. Санкт-Петербургу", "г. Санкт-Петербурга");
+      case MO -> new Department("Московской области", "Московской области");
+      case KRASNODAR -> new Department("Краснодарскому краю", "Краснодарского края");
+      case SVERDLOVSK -> new Department("Свердловской области", "Свердловской области");
+      case LENOBL -> new Department("Ленинградской области", "Ленинградской области");
+      case NOVOSIBIRSK -> new Department("Новосибирской области", "Новосибирской области");
+      case ROSTOV -> new Department("Ростовской области", "Ростовской области");
+      case BASHKORTOSTAN -> new Department("Республике Башкортостан", "Республики Башкортостан");
+      case TATARSTAN -> new Department("Республике Татарстан", "Республики Татарстан");
+      case CHELYABINSK -> new Department("Челябинской области", "Челябинской области");
+      case SAMARA -> new Department("Самарской области", "Самарской области");
+      case NIZHNY_NOVGOROD -> new Department("Нижегородской области", "Нижегородской области");
+      case KRASNOYARSK -> new Department("Красноярскому краю", "Красноярского края");
+      case PRIMORSKY -> new Department("Приморскому краю", "Приморского края");
+      case SARATOV -> new Department("Саратовской области", "Саратовской области");
+    };
+  }
+
   /** Поиск региона по коду субъекта РФ (2 цифры). {@code null}, если не найден. */
   public static Region byCode(String code) {
     if (code == null) {

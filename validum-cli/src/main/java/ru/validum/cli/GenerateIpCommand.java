@@ -14,6 +14,7 @@ import ru.validum.core.export.IpProfileFlattener;
 import ru.validum.core.name.Gender;
 import ru.validum.core.organization.IpProfile;
 import ru.validum.core.organization.IpProfileGenerator;
+import ru.validum.core.profile.AgeDistribution;
 import ru.validum.core.profile.IndividualProfileGenerator;
 
 @Command(
@@ -38,8 +39,16 @@ public final class GenerateIpCommand implements Callable<Integer> {
   @Option(names = "--gender", description = "MALE или FEMALE")
   String gender;
 
-  @Option(names = "--age", description = "Возраст")
+  @Option(names = "--age", description = "Возраст (одно число); для набора используйте --age-range")
   Integer age;
+
+  @Option(names = "--age-range",
+    description = "Диапазон возраста MIN-MAX (0–110), например 18-70; каждый профиль берёт своё значение")
+  String ageRange;
+
+  @Option(names = "--age-distribution", defaultValue = "uniform",
+    description = "Распределение возраста в диапазоне: uniform | realistic (когорты трудоспособных)")
+  String ageDistribution;
 
   @Option(names = "--region", description = "Регион: имя (MOSCOW, SPB, …) или код субъекта (77)")
   String region;
@@ -120,6 +129,10 @@ public final class GenerateIpCommand implements Callable<Integer> {
       .bikSource(bikSource);
     if (gender != null) b.gender(Gender.valueOf(gender.toUpperCase(Locale.ROOT)));
     if (age != null) b.age(age);
+    if (ageRange != null) {
+      int[] range = parseAgeRange(ageRange);
+      b.ageRange(range[0], range[1]).ageDistribution(parseAgeDistribution(ageDistribution));
+    }
     if (region != null) b.region(RegionOption.parse(region));
     if (bik != null) b.bik(bik);
     if (asOfDate != null) b.asOf(asOfDate);
@@ -129,5 +142,27 @@ public final class GenerateIpCommand implements Callable<Integer> {
     return okved != null
       ? IpProfileGenerator.generate(generator, profileSeed, okved)
       : IpProfileGenerator.generate(generator, profileSeed);
+  }
+
+  private static int[] parseAgeRange(String raw) {
+    String[] parts = raw.trim().split("-", 2);
+    if (parts.length == 2) {
+      try {
+        return new int[] { Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()) };
+      } catch (NumberFormatException ignored) {
+        // падаем ниже с общим сообщением
+      }
+    }
+    throw new IllegalArgumentException(
+      "Возрастной диапазон задан неверно: '" + raw + "'. Ожидается MIN-MAX, например 18-70");
+  }
+
+  private static AgeDistribution parseAgeDistribution(String raw) {
+    try {
+      return AgeDistribution.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+        "Неизвестное распределение возраста: '" + raw + "'. Допустимо: uniform, realistic");
+    }
   }
 }

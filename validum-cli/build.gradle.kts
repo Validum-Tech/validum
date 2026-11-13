@@ -4,26 +4,9 @@ plugins {
     id("com.gradleup.shadow") version "8.3.7"
 }
 
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-    }
-}
-
-tasks.withType<JavaCompile>().configureEach {
-    options.encoding = "UTF-8"
-    options.compilerArgs.addAll(listOf("-Xlint:all", "-parameters"))
-}
-
+// toolchain, release, UTF-8, -Xlint и validum.bik.file — в корневом build.gradle.kts (subprojects).
 tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
-    // Справочник БИК для тестов: встроенного демо-набора в продукте нет,
-    // поэтому тесты явно указывают файл ED807 (см. BikSources).
-    systemProperty(
-        "validum.bik.file",
-        file("src/test/resources/bik-sample.xml").absolutePath,
-    )
-    // Версия из gradle.properties: в тестах манифеста нет, BuildInfo читает это свойство.
+    // Версия из gradle.properties: в тестах манифеста нет, Version читает это свойство.
     systemProperty("validum.version", project.version.toString())
 }
 

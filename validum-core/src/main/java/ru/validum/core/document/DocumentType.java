@@ -28,37 +28,37 @@ import java.util.Arrays;
  */
 public enum DocumentType {
   /** Паспорт гражданина РФ, СПДУЛ 21. */
-  PASSPORT_RF("21", "Паспорт гражданина РФ", 4, 6, false, true, true, null),
+  PASSPORT_RF("21", "Паспорт гражданина РФ", 4, 6, false, true, true, null, 14, null),
 
   /** Дипломатический паспорт, СПДУЛ 09. */
-  DIPLOMATIC_PASSPORT("09", "Дипломатический паспорт", 2, 7, false, false, false, 5),
+  DIPLOMATIC_PASSPORT("09", "Дипломатический паспорт", 2, 7, false, false, false, 5, 0, null),
 
   /** Загранпаспорт гражданина РФ, СПДУЛ 22. */
-  FOREIGN_PASSPORT("22", "Загранпаспорт гражданина РФ", 2, 7, false, false, false, 10),
+  FOREIGN_PASSPORT("22", "Загранпаспорт гражданина РФ", 2, 7, false, false, false, 10, 0, null),
 
   /** Паспорт иностранного гражданина, СПДУЛ 10 (формат страны выдачи). */
-  PASSPORT_FOREIGN("10", "Паспорт иностранного гражданина", 2, 7, false, false, false, 5),
+  PASSPORT_FOREIGN("10", "Паспорт иностранного гражданина", 2, 7, false, false, false, 5, 0, null),
 
   /** Вид на жительство, СПДУЛ 12. */
-  RESIDENCE_PERMIT("12", "Вид на жительство", 2, 7, false, false, false, null),
+  RESIDENCE_PERMIT("12", "Вид на жительство", 2, 7, false, false, false, null, 0, null),
 
   /** Разрешение на временное проживание, СПДУЛ 15. */
-  TEMPORARY_RESIDENCE("15", "Разрешение на временное проживание", 2, 6, false, false, false, 3),
+  TEMPORARY_RESIDENCE("15", "Разрешение на временное проживание", 2, 6, false, false, false, 3, 0, null),
 
   /** Удостоверение беженца, СПДУЛ 13. */
-  REFUGEE_CERTIFICATE("13", "Удостоверение беженца", 2, 7, false, false, false, 3),
+  REFUGEE_CERTIFICATE("13", "Удостоверение беженца", 2, 7, false, false, false, 3, 0, null),
 
   /** Военный билет, СПДУЛ 07. */
-  MILITARY_ID("07", "Военный билет", 2, 7, true, false, false, null),
+  MILITARY_ID("07", "Военный билет", 2, 7, true, false, false, null, 18, 27),
 
   /** Военный билет офицера запаса, СПДУЛ 27. */
-  MILITARY_ID_RESERVE("27", "Военный билет офицера запаса", 2, 7, true, false, false, null),
+  MILITARY_ID_RESERVE("27", "Военный билет офицера запаса", 2, 7, true, false, false, null, 18, null),
 
   /** Виза (в СПДУЛ отсутствует). */
-  VISA(null, "Виза", 2, 7, false, false, false, 1),
+  VISA(null, "Виза", 2, 7, false, false, false, 1, 0, null),
 
   /** Водительское удостоверение (в СПДУЛ отсутствует). */
-  DRIVER_LICENSE(null, "Водительское удостоверение", 4, 6, false, false, false, 10);
+  DRIVER_LICENSE(null, "Водительское удостоверение", 4, 6, false, false, false, 10, 18, null);
 
   private final String spdulCode;
   private final String title;
@@ -68,6 +68,8 @@ public enum DocumentType {
   private final boolean groupedSeries;
   private final boolean hasDepartmentCode;
   private final Integer validityYears;
+  private final int minAge;
+  private final Integer maxAge;
 
   DocumentType(
     String spdulCode,
@@ -77,7 +79,9 @@ public enum DocumentType {
     boolean seriesLetters,
     boolean groupedSeries,
     boolean hasDepartmentCode,
-    Integer validityYears) {
+    Integer validityYears,
+    int minAge,
+    Integer maxAge) {
     this.spdulCode = spdulCode;
     this.title = title;
     this.seriesLength = seriesLength;
@@ -86,6 +90,8 @@ public enum DocumentType {
     this.groupedSeries = groupedSeries;
     this.hasDepartmentCode = hasDepartmentCode;
     this.validityYears = validityYears;
+    this.minAge = minAge;
+    this.maxAge = maxAge;
   }
 
   /** Код СПДУЛ или {@code null}, если документа нет в классификаторе. */
@@ -123,6 +129,16 @@ public enum DocumentType {
     return hasDepartmentCode;
   }
 
+  /** Минимальный возраст, с которого документ может быть выдан. */
+  public int minAge() {
+    return minAge;
+  }
+
+  /** Максимальный возраст держателя; {@code null} — без ограничения. */
+  public Integer maxAge() {
+    return maxAge;
+  }
+
   /** Срок действия в годах; {@code null} — бессрочно или срок задаётся возрастом. */
   public Integer validityYears() {
     return validityYears;
@@ -134,9 +150,26 @@ public enum DocumentType {
    * @throws IllegalArgumentException если код неизвестен
    */
   public static DocumentType fromCode(String code) {
+    String normalized = normalizeCode(code);
     return Arrays.stream(values())
-      .filter(type -> code != null && code.equals(type.spdulCode))
+      .filter(type -> normalized != null && normalized.equals(type.spdulCode))
       .findFirst()
       .orElseThrow(() -> new IllegalArgumentException("Неизвестный код СПДУЛ: " + code));
+  }
+
+  /**
+   * Коды СПДУЛ двузначные, но из PowerShell аргумент {@code 07} приезжает как число {@code 7}
+   * (оболочка сама превращает «21,07» в массив чисел). Одноразрядный код дополняем нулём,
+   * чтобы {@code --documents 21,7} не падал на ровном месте.
+   */
+  private static String normalizeCode(String code) {
+    if (code == null) {
+      return null;
+    }
+    String trimmed = code.trim();
+    if (trimmed.length() == 1 && Character.isDigit(trimmed.charAt(0))) {
+      return "0" + trimmed;
+    }
+    return trimmed;
   }
 }

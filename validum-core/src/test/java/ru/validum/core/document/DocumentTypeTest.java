@@ -33,6 +33,13 @@ class DocumentTypeTest {
   }
 
   @Test
+  @DisplayName("Одноразрядный код дополняется нулём: 7 → 07 (PowerShell отдаёт 7 вместо 07)")
+  void singleDigitCode() {
+    assertThat(DocumentType.fromCode("7")).isEqualTo(DocumentType.MILITARY_ID);
+    assertThat(DocumentType.fromCode(" 9 ")).isEqualTo(DocumentType.DIPLOMATIC_PASSPORT);
+  }
+
+  @Test
   @DisplayName("Неизвестный код СПДУЛ — исключение")
   void unknownCode() {
     assertThatThrownBy(() -> DocumentType.fromCode("99"))

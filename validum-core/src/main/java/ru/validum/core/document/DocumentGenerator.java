@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import ru.validum.core.common.Region;
 import ru.validum.core.random.DataGenerator;
 
 /**
@@ -51,6 +52,10 @@ public final class DocumentGenerator implements DataGenerator {
   private static final List<String> GIBDD_ISSUERS =
     List.of("ГИБДД 0215", "МРЭО ГИБДД ГУ МВД России по г. Москве", "ГИБДД 7712");
 
+  /** Как называется подразделение, выдавшее паспорт РФ; регион подставляется отдельно. */
+  private static final List<String> ISSUER_PREFIXES =
+    List.of("Отделом УФМС России по ", "Отделением УФМС России по ", "ОУФМС России по ");
+
   private static final List<String> FOREIGN_ISSUERS =
     List.of(
       "Компетентные органы Республики Казахстан",
@@ -91,7 +96,54 @@ public final class DocumentGenerator implements DataGenerator {
       issuer(type),
       issueDate,
       expirationDate,
-      type.hasDepartmentCode() ? departmentCode() : null);
+      type.hasDepartmentCode() ? departmentCode(null) : null);
+  }
+
+  /**
+   * Сгенерировать документ с привязкой к дате рождения держателя.
+   *
+   * <p>Дата выдачи не раньше {@code birthDate + minAge} и не позже {@code asOf}; у документов
+   * со сроком действия она вдобавок не раньше {@code asOf - validityYears}, чтобы на дату расчёта
+   * документ не был просрочен. Так паспорт не выдаётся пятилетнему, а права — семнадцатилетнему,
+   * а у несовершеннолетнего не появляется сорокалетний стаж владения.
+   */
+  public IdentityDocument generate(DocumentType type, LocalDate birthDate, LocalDate asOf) {
+    return generate(type, birthDate, asOf, null);
+  }
+
+  /**
+   * То же, но «кем выдан» согласован с регионом прописки держателя.
+   *
+   * @param regionCode код субъекта РФ; {@code null} — орган выбирается случайно из справочника
+   */
+  public IdentityDocument generate(
+    DocumentType type, LocalDate birthDate, LocalDate asOf, String regionCode) {
+    Objects.requireNonNull(type, "type");
+    Objects.requireNonNull(birthDate, "birthDate");
+    Objects.requireNonNull(asOf, "asOf");
+
+    LocalDate earliest = birthDate.plusYears(type.minAge());
+    Integer years = type.validityYears();
+    if (years != null) {
+      LocalDate notExpired = asOf.minusYears(years);
+      if (notExpired.isAfter(earliest)) {
+        earliest = notExpired;
+      }
+    }
+    if (earliest.isAfter(asOf)) {
+      earliest = asOf;
+    }
+    long days = java.time.temporal.ChronoUnit.DAYS.between(earliest, asOf);
+    LocalDate issueDate = earliest.plusDays(days == 0 ? 0L : random.nextInt((int) days + 1));
+    LocalDate expirationDate = years == null ? null : issueDate.plusYears(years);
+    return new IdentityDocument(
+      type,
+      series(type),
+      number(type.numberLength()),
+      issuer(type, regionCode),
+      issueDate,
+      expirationDate,
+      type.hasDepartmentCode() ? departmentCode(regionCode) : null);
   }
 
   private String series(DocumentType type) {
@@ -134,8 +186,29 @@ public final class DocumentGenerator implements DataGenerator {
     return builder.toString();
   }
 
-  private String departmentCode() {
-    return String.format("%03d-%03d", 100 + random.nextInt(900), 1 + random.nextInt(999));
+  /**
+   * Код подразделения: первые три цифры — код региона (77Х, 02Х). Без региона — просто 100–999,
+   * чтобы формат оставался {@code XXX-XXX}.
+   */
+  private String departmentCode(String regionCode) {
+    String prefix = regionCode != null && regionCode.length() == 2 ? regionCode : null;
+    String head = prefix == null
+      ? String.format("%03d", 100 + random.nextInt(900))
+      : prefix + (1 + random.nextInt(9));
+    return head + "-" + String.format("%03d", 1 + random.nextInt(999));
+  }
+
+  private String issuer(DocumentType type, String regionCode) {
+    Region region = regionCode == null ? null : Region.byCode(regionCode);
+    if (region != null) {
+      return switch (type) {
+        case PASSPORT_RF -> pick(ISSUER_PREFIXES) + region.department().ufms();
+        case MILITARY_ID, MILITARY_ID_RESERVE ->
+          "Военным комиссариатом " + region.department().military();
+        default -> issuer(type);
+      };
+    }
+    return issuer(type);
   }
 
   private String issuer(DocumentType type) {

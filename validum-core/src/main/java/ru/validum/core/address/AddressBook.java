@@ -129,16 +129,18 @@ public final class AddressBook {
     String postalCode = firstNonBlank(street.index(), place.index(), proceduralIndex(random));
     String building = String.valueOf(1 + random.nextInt(150));
     String apartment = String.valueOf(1 + random.nextInt(300));
+    // Человекочитаемо: «196240, Санкт-Петербург г, г. Пушкин, ул. Госпитальная, д. 12, кв. 5».
+    // Пустые части не печатаем, тип населённого пункта/улицы ставим ПЕРЕД названием,
+    // как принято в русских адресах (раньше получалось «Катышка д,,1 Мая ул»).
     String formatted =
-      String.join(
-        ",",
+      humanAddress(
         postalCode,
         subject.display(),
-        place.district(),
-        "",
-        place.display(),
-        "",
-        street.display(),
+        subject.name(),
+        place.type(),
+        place.name(),
+        street.type(),
+        street.name(),
         building,
         apartment);
 
@@ -169,6 +171,57 @@ public final class AddressBook {
       formatted,
       AbsDefaults.FIAS_IFNSFL,
       AbsDefaults.FIAS_STREET_AOGUID);
+  }
+
+  /**
+   * Русский порядок частей: «индекс, субъект, г. НП, ул. Улица, д. N, кв. M». Пустое — пропускаем,
+   * чтобы строка не выглядела битой ни в Excel, ни в отчёте {@code describe}.
+   */
+  static String humanAddress(
+    String postalCode,
+    String subject,
+    String subjectName,
+    String placeType,
+    String placeName,
+    String streetType,
+    String streetName,
+    String building,
+    String apartment) {
+    List<String> parts = new ArrayList<>(6);
+    add(parts, postalCode);
+    add(parts, subject);
+    // «Москва г» + «г. Москва» — один и тот же город, второй раз не печатаем.
+    if (placeName != null
+      && !placeName.isBlank()
+      && (subjectName == null || !placeName.equalsIgnoreCase(subjectName))) {
+      add(parts, withType(placeType, placeName));
+    }
+    if (streetName != null && !streetName.isBlank()) {
+      add(parts, withType(streetType, streetName));
+    }
+    if (building != null && !building.isBlank()) {
+      add(parts, "д. " + building);
+    }
+    if (apartment != null && !apartment.isBlank()) {
+      add(parts, "кв. " + apartment);
+    }
+    return String.join(", ", parts);
+  }
+
+  private static void add(List<String> parts, String value) {
+    if (value != null && !value.isBlank()) {
+      parts.add(value);
+    }
+  }
+
+  private static String withType(String type, String name) {
+    if (type == null || type.isBlank()) {
+      return name;
+    }
+    // В справочнике КЛАДР тип иногда уже с точкой («кп.», «с.») — вторую не добавляем,
+    // иначе получается «кп.. Горные Ключи».
+    String prefix = type.endsWith(".") ? type : type + ".";
+    return prefix + " " + name;
   }
 
   // ── Внутреннее ───────────────────────────────────────────────────────────

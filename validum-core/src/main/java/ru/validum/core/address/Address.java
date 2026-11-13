@@ -76,6 +76,16 @@ public record Address(
       expectedAddress, fiasAddress, fiasIfnsfl, fiasStreetAoguid);
   }
 
+  /** Копия адреса с другой готовой строкой и индексом (нужно для намеренной порчи формата). */
+  public Address withExpected(String newPostalCode, String newExpectedAddress) {
+    return new Address(
+      type, format, status, isDefault, country, newPostalCode,
+      region, regionType, district, districtType, city, cityType,
+      locality, localityType, planElement, planElementType,
+      street, streetType, building, buildingType, apartment, apartmentType,
+      newExpectedAddress, fiasAddress, fiasIfnsfl, fiasStreetAoguid);
+  }
+
   /** Копия адреса с другим флагом «по умолчанию». */
   public Address withIsDefault(boolean newIsDefault) {
     return new Address(

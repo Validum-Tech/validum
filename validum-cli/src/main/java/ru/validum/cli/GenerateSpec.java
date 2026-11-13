@@ -39,6 +39,8 @@ public record GenerateSpec(
     Boolean noAccount,
     String region,
     Integer age,
+    String ageRange,
+    String ageDistribution,
     String gender,
     String bik,
     String okved,
@@ -46,16 +48,21 @@ public record GenerateSpec(
     String organizationName,
     String documents,
     String documentsMode,
+    String residency,
+    String country,
     String dialect,
     String table,
-    Boolean noDdl) {
+    Boolean noDdl,
+    String corrupt) {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final Set<String> ALLOWED = Set.of(
     "type", "count", "seed", "asOf", "format", "output", "unique", "terrorist", "blocked",
-    "noAccount", "region", "age", "gender", "bik", "okved", "organizationType",
-    "organizationName", "documents", "documentsMode", "dialect", "table", "noDdl", "options");
+    "noAccount", "region", "age", "ageRange", "ageDistribution", "gender", "bik",
+    "okved", "organizationType",
+    "organizationName", "documents", "documentsMode", "residency", "country", "dialect",
+    "table", "noDdl", "corrupt", "options");
 
   /** Читает и валидирует спецификацию; ошибки — {@link IllegalArgumentException} с понятным текстом. */
   public static GenerateSpec load(Path file) {
@@ -131,6 +138,8 @@ public record GenerateSpec(
       bool(merged, "noAccount"),
       text(merged, "region"),
       integer(merged, "age"),
+      text(merged, "ageRange"),
+      text(merged, "ageDistribution"),
       text(merged, "gender"),
       text(merged, "bik"),
       text(merged, "okved"),
@@ -138,17 +147,35 @@ public record GenerateSpec(
       text(merged, "organizationName"),
       documents(merged),
       text(merged, "documentsMode"),
+      text(merged, "residency"),
+      text(merged, "country"),
       text(merged, "dialect"),
       text(merged, "table"),
-      bool(merged, "noDdl"));
+      bool(merged, "noDdl"),
+      joined(merged, "corrupt"));
+  }
+
+  /** Строка или массив строк, склеенные через запятую (поле {@code corrupt}). */
+  private static String joined(JsonNode root, String field) {
+    JsonNode node = root.get(field);
+    if (node == null || node.isNull()) {
+      return null;
+    }
+    if (node.isArray()) {
+      List<String> parts = new ArrayList<>();
+      node.forEach(item -> parts.add(item.asText()));
+      return String.join(",", parts);
+    }
+    return node.asText();
   }
 
   /** Копия с другим путём вывода — {@code -o} в командной строке важнее файла. */
   public GenerateSpec withOutput(Path path) {
     return new GenerateSpec(
       type, count, seed, asOf, format, path.toString(), unique, terrorist, blocked, noAccount,
-      region, age, gender, bik, okved, organizationType, organizationName, documents,
-      documentsMode, dialect, table, noDdl);
+      region, age, ageRange, ageDistribution, gender, bik, okved, organizationType,
+      organizationName, documents,
+      documentsMode, residency, country, dialect, table, noDdl, corrupt);
   }
 
   /** Допускает русские и короткие синонимы: ФЛ/ИП/ЮЛ вместо громоздких английских. */

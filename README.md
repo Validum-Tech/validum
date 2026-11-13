@@ -7,7 +7,7 @@
 [![Java](https://img.shields.io/badge/Java-21_LTS-orange.svg)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Gradle](https://img.shields.io/badge/Gradle-8.14-blue.svg)](https://gradle.org/)
-[![Tests](https://img.shields.io/badge/tests-769_passing-success.svg)](#-тесты)
+[![Tests](https://img.shields.io/badge/tests-846_passing-success.svg)](#-тесты)
 [![Coverage](https://img.shields.io/badge/coverage-core_91%25_%7C_api_92%25-yellowgreen.svg)](#-тесты)
 [![Banks](https://img.shields.io/badge/CBR_banks-370-blueviolet.svg)](#-полный-справочник-цб-рф)
 [![Zero-deps](https://img.shields.io/badge/core-zero--dependency-lightgrey.svg)](#-архитектура)
@@ -30,7 +30,7 @@ Validum создаёт **вымышленные** данные для тесто
 
 ## 🚀 Быстрый старт
 
-Три команды — от нуля до данных. Нужен только JDK 21 (или Docker).
+Три команды — от нуля до данных. Нужен только JDK 17+ (или Docker).
 
 ```powershell
 # 1. Справочник участников ЦБ (обязателен: 1380 участников, 370 банков)
@@ -65,10 +65,13 @@ java -jar validum.jar generate individual --seed 42 -n 1000 --format sql --diale
 - [CLI (P3.1)](#-cli-p31)
 - [Allure Extension (P3.2)](#-allure-extension-p32)
 - [Явный выбор банка (P3.3)](#-явный-выбор-банка-p33)
+- [Нерезиденты](#-нерезиденты---residency---country)
 - [Юрлица и ИП](#-юрлица-и-ип)
 - [Полный справочник ЦБ РФ](#-полный-справочник-цб-рф)
 - [Быстрый старт](#-быстрый-старт)
 - [REST API](#-rest-api)
+- [Найти человека в наборе](#-найти-человека-в-наборе)
+- [Негативные данные](#-негативные-данные---corrupt)
 - [Java-библиотека](#-java-библиотека)
 - [Архитектура](#-архитектура)
 - [Структура репозитория](#-структура-репозитория)
@@ -183,11 +186,9 @@ Fat JAR на Picocli, **без Spring** (~15 МБ вместе со справо
 
 JUnit 5 Extension. `@ValidumSeed` / `@ValidumGenerate` → плоский JSON в Allure-отчёте. Только ФЛ.
 
-**Проверено на реальном счёте из АБС:** `40817101000000000953 — валиден по 809-П ✅`
-
-### 🐛 Баг, который прятался годами
-
-В стандартном коде генерации СНИЛС цифры извлекаются через `% 10` (обратный порядок) — коэффициенты ПФР перевёрнуты, все СНИЛС бракуются. **Validum это исправляет.**
+Контрольный ключ счёта считается по схеме письма ЦБ № 515: разряды 7–9 берутся из БИК
+клиентского счёта (или «0» + 5–6 БИК подразделений БР для корреспондентских).
+Поэтому один и тот же номер нельзя объявить валидным без БИК и типа счёта.
 
 ---
 
@@ -198,7 +199,7 @@ JUnit 5 Extension. `@ValidumSeed` / `@ValidumGenerate` → плоский JSON �
 | **REST API** | Автотесты (JUnit + REST Assured), Swagger UI | `docker compose up` → `POST /api/v1/generate/...` |
 | **CLI** | Скрипты сетапа, CI-пайплайны, «100 профилей в CSV» | `java -jar validum.jar generate individual --count 100 --format csv -o profiles.csv` |
 | **Allure Extension** | JUnit 5: attach профиля в Allure-отчёт | `@ValidumSeed(42)` / `@ValidumGenerate(...)` |
-| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.2.0</dependency>` (Maven Central) |
+| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.3.0</dependency>` (Maven Central) |
 
 ---
 
@@ -381,7 +382,11 @@ java -jar validum.jar generate organization --seed 42 -n 10 --format csv-semicol
 - **UTF-8 BOM** — Excel откроет кириллицу корректно.
 - **Плоская структура** — `passportSeries`, `registrationCity`, `bankBik`, ...
 - **Экранирование** — RFC 4180 (кавычки удваиваются, запятые и переносы строк берутся в кавычки).
-- `csv-semicolon` — те же данные для человека: разделитель «;» (русский Excel по умолчанию так разбирает) и заголовки на русском. Машинные конвейеры продолжают читать `csv`.
+- `csv-semicolon` — те же данные для человека: разделитель «;» (русский Excel по умолчанию так
+  разбирает), заголовки на русском и кодовые значения текстом (`="586272979740"`). Без этой
+  обёртки Excel угадывает тип и портит данные: ИНН показывает как `5,86E+11`, из 20-значного
+  счёта выпадают цифры, индекс `053796` теряет ведущий ноль. Обёртка — только в «дружелюбном»
+  формате; машинные конвейеры продолжают читать `csv` без формул.
 
 **Архитектурно (P3.1a):** `CsvExporter` + 3 флаттенера живут **в core** (`ru.validum.core.export`) — используются REST API, CLI и Allure.
 
@@ -478,7 +483,7 @@ java -jar validum.jar fetch-bik --offline
 ## 🎭 Allure Extension (P3.2)
 
 ```kotlin
-testImplementation("io.github.validum-tech:validum-allure:0.2.0")
+testImplementation("io.github.validum-tech:validum-allure:0.3.0")
 ```
 
 ```java
@@ -570,6 +575,29 @@ java -jar validum.jar generate individual --bik 000000000 --format csv
 
 ---
 
+## 🌍 Нерезиденты (`--residency`, `--country`)
+
+Пока в банке есть трудовые мигранты, в тестовых данных должны быть и они. По умолчанию
+генерируется резидент РФ — по всем полям; для нерезидента всё меняется согласованно:
+
+```bash
+java -jar validum.jar generate individual --seed 42 --residency non-resident --country KZ \
+  --age 30 --documents auto --format json
+```
+
+- адрес регистрации, почтовый и фактический — в стране проживания, с городом и индексом в
+  формате страны (Алматы `05xxxx`, Минск `22xxxx`, Берлин `10xxx`);
+- набор ДУЛ собирается под нерезидента: паспорт иностранного гражданина, а с 18 лет — ВНЖ;
+- в плоской выдаче появляются колонки `isResident` и `citizenship` (русские заголовки —
+  «Резидент» и «Гражданство»), в CSV для Excel они уже есть.
+
+Гражданство и место жительства независимы: нерезидент из Таджикистана может жить в Москве —
+если задан `--region`, адрес берётся из КЛАДР, а паспорт остаётся иностранным.
+
+Поддержаны страны: `KZ` (по умолчанию), `BY`, `UZ`, `KG`, `AM`, `GE`, `UA`, `DE`, `US`;
+страна без своих данных получает нейтральный набор. Улицы — типовые для страны, а не выгрузка
+из национального реестра: это синтетический адрес, а не предсказание реального.
+
 ## 🏢 Юрлица и ИП
 
 ### ЮЛ — `POST /api/v1/generate/organization`
@@ -634,7 +662,7 @@ Rename-Item data\*.xml data\ED807.xml
 
 ### Требования
 
-- **JDK 21** (Temurin, Corretto, OpenJDK)
+- **JDK 17+** для CLI/библиотек (Temurin, Corretto, OpenJDK); **JDK 21** для REST-сервиса
 - **Gradle Wrapper** (в репо)
 - **Docker Desktop** (опционально)
 
@@ -750,6 +778,10 @@ curl -X POST http://localhost:8080/api/v1/generate/individual \
 сгенерировала данные) и `X-Validum-Seed` (фактический seed; `auto`, если вы его не задали), CLI
 пишет ту же мету в stderr. Версия — из `ru.validum.core.Version` (Gradle → манифест → `dev`).
 
+В каждом профиле есть `personId` вида `pd-9f2a6c1d0b7e4a53` — он выводится из seed
+(в батче seed профиля = базовый + индекс), поэтому один и тот же человек всегда получает
+один и тот же идентификатор в CLI, REST и CSV. Это основа адресного доступа к сущности.
+
 ### 📄 Набор из спецификации (`.validum.json`)
 
 Вместо простыни флагов — один файл, который можно положить в репозиторий тестов:
@@ -787,7 +819,7 @@ java -jar validum.jar coverage --file clients.csv
 ```
 
 ```
-# validum 0.2.0 coverage · file=clients.csv · rows=100
+# validum 0.3.0 coverage · file=clients.csv · rows=100
 
 поле               заполнено  различных  невалидных
 --------------------------------------------------
@@ -802,6 +834,46 @@ account                 100% (100/100)        100          0
 Проверяются контрольные суммы ИНН, СНИЛС, ОГРН/ОГРНИП, КПП, ОКПО и ключ счёта (для счёта берётся
 БИК из той же строки); остальные поля — по полноте и различию. Понимает CSV (машинный и
 `csv-semicolon` — BOM и `;` распознаются), JSON и JSON-массив; формат можно задать `--format`.
+
+### 🧭 Найти человека в наборе
+
+Сгенерировали тысячу профилей, тест упал на одной строке — как понять, что в ней? Сначала индекс:
+
+```bash
+java -jar validum.jar generate individual --seed 42 -n 1000 --format csv-semicolon -o clients.csv --index
+```
+
+`--index` печатает в stderr (данные не портит) таблицу «№ · идентификатор · ФИО · возраст · регион ·
+банк · счёт». Дальше — карточка нужного человека:
+
+```bash
+java -jar validum.jar describe --file clients.csv --person pd-364c4379da9ab...   # или --row 3
+```
+
+`describe` показывает паспорт (серия, номер, кем выдан, срок, код подразделения), дополнительные
+документы, адреса с индексами, банк и счёт, флаги — и проверки: ИНН, СНИЛС, контрольный ключ счёта и
+согласованность набора (возраст против документов, регион против «кем выдан»). Читает и CSV с
+русскими заголовками, и JSON.
+
+### 🧪 Негативные данные (`--corrupt`)
+
+Иногда нужен профиль, который валидатор АБС **обязан** отвергнуть — с ровно одной ошибкой, чтобы
+тест падал на ней, а не на «всё сломалось»:
+
+```bash
+java -jar validum.jar generate individual --seed 7 --corrupt inn -o bad-inn.json
+java -jar validum.jar generate individual --seed 7 -n 10 --corrupt inn,snils --format csv-semicolon -o bad-set.csv
+java -jar validum.jar generate individual --seed 7 --corrupt address -o bad-address.json
+```
+
+| Поле | Что ломается |
+|---|---|
+| `inn` | контрольные разряды ИНН не сходятся |
+| `snils` | контрольное число СНИЛС не сходится |
+| `address` | индекс пустой, строка адреса — «ул. , д. , кв. » |
+
+Остальные поля остаются согласованными. В stderr печатается `# испорчено: inn,address` — по этой
+строке в отчёте теста видно, что набор испорчен намеренно. В спецификации: `"corrupt": ["inn"]`.
 
 ---
 
@@ -913,7 +985,7 @@ validum/
 │       ├── ValidumSeed · ValidumGenerate · ValidumExtension
 │
 ├── data/ED807.xml         ← Справочник ЦБ, НЕ коммитится
-├── docs/                  ← README · SCENARIOS · ROADMAP · recipes/ · reference/{cbr,dul}
+├── docs/                  ← README · SCENARIOS · ROADMAP · COMPATIBILITY · recipes/ · reference/{cbr,dul}
 ├── docker-compose.yml
 └── gradle/libs.versions.toml
 ```
@@ -949,7 +1021,7 @@ validum/
 | `validum-api` | **80** |
 | `validum-cli` | **55** |
 | `validum-allure` | **19** |
-| **Итого** | **769** |
+| **Итого** | **846** |
 
 Покрытие строк по jacoco (прогон 30.10.2026): `validum-core` — **89,2%** (2309/2588), `validum-api` — **92,2%** (404/438), `validum-cli` — считается тем же отчётом (HTML — `validum-cli/build/reports/jacoco/test/html/index.html`). Худшие пакеты: `validation` (75,9%), `common` (77,2%), `address` (77,8%); полностью покрыты `passport`, `snils`, `ogrn`, `random`. HTML-отчёт — `validum-core/build/reports/jacoco/test/html/index.html`.
 
@@ -1016,17 +1088,18 @@ docker compose up -d
 | Что | Где взять |
 |---|---|
 | Fat jar `validum.jar` (+ `.sha256`) | [GitHub Releases](https://github.com/Validum-Tech/validum/releases) |
-| Java-библиотеки (`validum-core`, `validum-allure`, …) | Maven Central: `io.github.validum-tech:*:0.2.0` (с первого релиза в Central; подключать репозиторий не нужно) |
+| Java-библиотеки (`validum-core`, `validum-allure`, …) | Maven Central: `io.github.validum-tech:*:0.3.0` (с первого релиза в Central; подключать репозиторий не нужно) |
 | Контейнер API | `docker compose up` локально; Docker Hub — после 0.2 |
 | Исходники | `git clone` → `./gradlew build` |
 
 Как выпускается версия (тег, секреты, Maven Central) — [`docs/RELEASING.md`](docs/RELEASING.md).
+Что мы гарантируем потребителю (JDK, зависимости, контракт вывода, ломающие изменения) — [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md).
 
 ---
 
 ## 🤝 Для контрибьюторов
 
-- **JDK 21**, Gradle Wrapper, IntelliJ IDEA / VS Code
+- **JDK 21** для сборки (toolchain), байткод CLI/библиотек — 17
 - Java 21 Records, immutable, каскадные дефолты
 - Фасады только для 3+ связанных полей
 - Тесты: `src/test/`, имя файла = имя класса, `@DisplayName` на русском
@@ -1038,7 +1111,7 @@ docker compose up -d
 
 1. Форк → ветка `feature/my-feature`
 2. Тесты **до** реализации
-3. `./gradlew build` — все 769 зелёные, покрытие не падает
+3. `./gradlew build` — все 846 зелёные, покрытие не падает
 4. PR — CI прогонит сборку на Linux и Windows
 
 Подробности и чек-лист — [`CONTRIBUTING.md`](CONTRIBUTING.md).
@@ -1060,4 +1133,4 @@ Apache License 2.0 — см. [LICENSE](LICENSE).
 
 ---
 
-**Validum** — данные, которые проходят валидацию. **769 тестов. 370 банков. REST API + CLI + Java-библиотека + Allure. P0.1–P0.3, P1.2–P1.4, P2.2, P2.3, P3.1–P3.3, P4.1 закрыты, ДУЛ (11 видов) — в профиле, REST и CLI. 9 КУС-сценариев, экспорт ED807/ED808, Docker.**
+**Validum** — данные, которые проходят валидацию. **846 тестов. 370 банков. REST API + CLI + Java-библиотека + Allure. P0.1–P0.3, P1.2–P1.4, P2.2, P2.3, P3.1–P3.3, P4.1 закрыты, ДУЛ (11 видов) — в профиле, REST и CLI. 9 КУС-сценариев, экспорт ED807/ED808, Docker.**

@@ -125,6 +125,9 @@ class GoldenFixturesTest {
     StringBuilder canonical = new StringBuilder();
     for (Map<String, String> row : rows) {
       TreeMap<String, String> sorted = new TreeMap<>(row);
+      // personId выводится из seed и проверяется отдельно (PersonIdsTest, SeedDeterminismTest):
+      // в каноничный вид его не кладём, чтобы golden-эталон описывал только данные профиля.
+      sorted.remove("personId");
       sorted.forEach((key, value) ->
         canonical.append(key).append('=').append(value).append('&'));
       canonical.append('\n');

@@ -81,7 +81,14 @@ public record IndividualProfile(
    * <p>Пустое значение трактуется как «сегодня» — так собраны профили, созданные до появления
    * поля. Задавайте явно (builder {@code .asOf(...)}), если нужна воспроизводимость между днями.
    */
-  LocalDate asOf) {
+  LocalDate asOf,
+
+  /**
+   * Детерминированный идентификатор человека: выводится из seed, которым собран профиль
+   * (см. {@link ru.validum.core.common.PersonIds}). Пусто у профилей, собранных без seed —
+   * например, при импорте CSV без колонки {@code personId}.
+   */
+  String personId) {
 
   /** Полное ФИО одной строкой. */
   public String fullName() {
@@ -136,6 +143,7 @@ public record IndividualProfile(
       bank,
       account,
       documents,
-      asOf);
+      asOf,
+      personId);
   }
 }

@@ -86,6 +86,28 @@ public final class AddressGenerator implements DataGenerator {
     return AddressBook.address(random, region.code(), AddressType.CURRENT);
   }
 
+  /**
+   * Адрес за пределами России — город и улица страны, а не субъекта РФ.
+   *
+   * <p>Нужен для нерезидентов: у них нет ни ОКТМО, ни КЛАДР, поэтому адрес помечается форматом
+   * {@link AddressFormat#FREE_FORM} и заполняется напрямую.
+   */
+  public Address generateOutsideRU(Country country, AddressType type) {
+    if (country == null) {
+      throw new IllegalArgumentException("Страна не может быть null");
+    }
+    if (country == Country.RU) {
+      throw new IllegalArgumentException(
+        "Для России используйте generateRegistration/Post/Current — у них есть КЛАДР");
+    }
+    return ForeignAddresses.of(country, type, random);
+  }
+
+  /** Адрес регистрации нерезидента. */
+  public Address generateRegistrationOutsideRU(Country country) {
+    return generateOutsideRU(country, AddressType.REGISTRATION);
+  }
+
   /** Место рождения из случайного субъекта (тип BIRTH_PLACE). */
   public Address generateBirthPlace() {
     return AddressBook.address(random, null, AddressType.BIRTH_PLACE).withIsDefault(false);

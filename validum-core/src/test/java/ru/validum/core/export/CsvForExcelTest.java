@@ -26,7 +26,40 @@ class CsvForExcelTest {
 
     assertThat(csv).startsWith("\uFEFF");
     assertThat(csv).contains("ФИО;ИНН;Банк");
-    assertThat(csv).contains("Иванов Иван Иванович;500100732259;ПАО Сбербанк");
+    assertThat(csv).contains("Иванов Иван Иванович;");
+    assertThat(csv).contains("\"=\"\"500100732259\"\"\"");
+    assertThat(csv).contains("ПАО Сбербанк");
+  }
+
+  @Test
+  @DisplayName("В Excel-формате коды идут текстом: ИНН, счёт, индекс с ведущим нолём")
+  void codesGoAsText() {
+    Map<String, String> m = new LinkedHashMap<>();
+    m.put("inn", "586272979740");
+    m.put("snils", "10726002205");
+    m.put("account", "40817810600009108089");
+    m.put("registrationPostalCode", "053796");
+    m.put("bankBik", "044525225");
+    m.put("mobileValue", "+7 916 123-45-67");
+    m.put("passportIssuedBy", "ОП № 3 УМВД России по г. Казани");
+
+    String csv = CsvExporter.toCsv(List.of(m), ';', true);
+
+    assertThat(csv).contains("\"=\"\"586272979740\"\"\"");
+    assertThat(csv).contains("\"=\"\"40817810600009108089\"\"\"");
+    assertThat(csv).contains("\"=\"\"053796\"\"\"");
+    assertThat(csv).contains("\"=\"\"044525225\"\"\"");
+    assertThat(csv).contains("ОП № 3 УМВД России по г. Казани");
+    assertThat(csv).doesNotContain("\"=\"\"ОП");
+  }
+
+  @Test
+  @DisplayName("Машинный CSV не оборачивает коды — его читают скрипты")
+  void machineCsvKeepsRawCodes() {
+    String csv = CsvExporter.toCsv(List.of(row()));
+
+    assertThat(csv).contains("500100732259");
+    assertThat(csv).doesNotContain("=\"");
   }
 
   @Test

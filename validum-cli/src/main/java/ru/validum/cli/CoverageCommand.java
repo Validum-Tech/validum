@@ -1,13 +1,7 @@
 package ru.validum.cli;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -15,6 +9,7 @@ import java.util.concurrent.Callable;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import ru.validum.core.report.Consistency;
 import ru.validum.core.report.Coverage;
 
 /**
@@ -26,8 +21,6 @@ import ru.validum.core.report.Coverage;
   name = "coverage",
   description = "Отчёт о покрытии набора: полнота и валидность ключевых полей")
 public final class CoverageCommand implements Callable<Integer> {
-
-  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Option(
     names = "--file",
@@ -52,6 +45,9 @@ public final class CoverageCommand implements Callable<Integer> {
       }
       print(rows);
       return 0;
+    } catch (java.nio.file.NoSuchFileException e) {
+      System.err.println("Ошибка: файл не найден — " + file.toAbsolutePath());
+      return 2;
     } catch (IOException e) {
       System.err.println("Ошибка чтения " + file + ": " + e.getMessage());
       return 2;
@@ -62,98 +58,7 @@ public final class CoverageCommand implements Callable<Integer> {
   }
 
   private List<Map<String, String>> read() throws IOException {
-    String mode = format == null ? null : format.toLowerCase(Locale.ROOT).replace('-', '_');
-    if (mode == null) {
-      mode = file.toString().toLowerCase(Locale.ROOT).endsWith(".csv") ? "csv" : "json";
-    }
-    return mode.startsWith("csv") ? readCsv() : readJson();
-  }
-
-  private List<Map<String, String>> readCsv() throws IOException {
-    List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
-    List<String> present = lines.stream().filter(line -> !line.isBlank()).toList();
-    if (present.isEmpty()) {
-      return List.of();
-    }
-    char delimiter = detectDelimiter(present.get(0));
-    List<String> header = parseLine(stripBom(present.get(0)), delimiter);
-    List<Map<String, String>> rows = new ArrayList<>();
-    for (int i = 1; i < present.size(); i++) {
-      List<String> values = parseLine(present.get(i), delimiter);
-      Map<String, String> row = new LinkedHashMap<>();
-      for (int c = 0; c < header.size(); c++) {
-        row.put(header.get(c).trim(), c < values.size() ? values.get(c) : "");
-      }
-      rows.add(row);
-    }
-    return rows;
-  }
-
-  private static String stripBom(String line) {
-    return line.startsWith("\uFEFF") ? line.substring(1) : line;
-  }
-
-  private static char detectDelimiter(String header) {
-    long commas = header.chars().filter(c -> c == ',').count();
-    long semicolons = header.chars().filter(c -> c == ';').count();
-    return semicolons > commas ? ';' : ',';
-  }
-
-  private static List<String> parseLine(String line, char delimiter) {
-    List<String> values = new ArrayList<>();
-    StringBuilder current = new StringBuilder();
-    boolean quoted = false;
-    for (int i = 0; i < line.length(); i++) {
-      char c = line.charAt(i);
-      if (quoted) {
-        if (c == '"') {
-          if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
-            current.append('"');
-            i++;
-          } else {
-            quoted = false;
-          }
-        } else {
-          current.append(c);
-        }
-      } else if (c == '"') {
-        quoted = true;
-      } else if (c == delimiter) {
-        values.add(current.toString());
-        current.setLength(0);
-      } else {
-        current.append(c);
-      }
-    }
-    values.add(current.toString());
-    return values;
-  }
-
-  private List<Map<String, String>> readJson() throws IOException {
-    JsonNode root = MAPPER.readTree(file.toFile());
-    List<JsonNode> items = new ArrayList<>();
-    if (root.isArray()) {
-      root.forEach(items::add);
-    } else {
-      items.add(root);
-    }
-    List<Map<String, String>> rows = new ArrayList<>();
-    for (JsonNode item : items) {
-      Map<String, String> row = new LinkedHashMap<>();
-      item.fields().forEachRemaining(entry -> row.put(entry.getKey(), text(entry.getValue())));
-      rows.add(row);
-    }
-    return rows;
-  }
-
-  private static String text(JsonNode node) {
-    if (node == null || node.isNull()) {
-      return "";
-    }
-    if (node.isValueNode()) {
-      return node.asText();
-    }
-    return node.toString();
+    return DatasetReader.read(file, format);
   }
 
   private void print(List<Map<String, String>> rows) {
@@ -184,6 +89,47 @@ public final class CoverageCommand implements Callable<Integer> {
     System.out.printf(
       "итог: %d полей, %d с невалидными значениями, %d с пустыми%n",
       stats.size(), invalidFields, blankFields);
+
+    printConsistency(rows);
+    printDistributions(rows);
+  }
+
+  private void printConsistency(List<Map<String, String>> rows) {
+    List<Consistency.Violation> violations = Consistency.check(rows);
+    System.out.println();
+    if (violations.isEmpty()) {
+      System.out.println("Согласованность: нарушений нет");
+      return;
+    }
+    System.out.println("Согласованность: " + violations.size() + " нарушений");
+    for (Consistency.Violation violation : violations) {
+      System.out.println("  " + violation);
+    }
+  }
+
+  private void printDistributions(List<Map<String, String>> rows) {
+    System.out.println();
+    System.out.println("Распределения:");
+    Map<String, String> ages = Consistency.ageSummary(rows);
+    if (!ages.isEmpty()) {
+      System.out.printf(
+        "  возраст: %s–%s, средний %s%n", ages.get("мин"), ages.get("макс"), ages.get("средний"));
+    }
+    for (Map.Entry<String, Map<String, Integer>> entry
+        : Consistency.distributions(rows).entrySet()) {
+      Map<String, Integer> counts = entry.getValue();
+      if (counts.isEmpty()) {
+        continue;
+      }
+      int total = counts.values().stream().mapToInt(Integer::intValue).sum();
+      String values = counts.entrySet().stream()
+        .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+        .limit(6)
+        .map(e -> "%s %d%%".formatted(e.getKey(), Math.round(100.0 * e.getValue() / total)))
+        .collect(java.util.stream.Collectors.joining(", "));
+      String tail = counts.size() > 6 ? " (+%d ещё)".formatted(counts.size() - 6) : "";
+      System.out.printf("  %s: %s%s%n", entry.getKey(), values, tail);
+    }
   }
 
   /** Регистрация в корневой команде выполняется через {@link CommandLine}; метод нужен для тестов. */

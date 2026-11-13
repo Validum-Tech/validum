@@ -16,14 +16,17 @@ import ru.validum.core.abs.AbsDefaults;
 import ru.validum.core.account.AccountGenerator;
 import ru.validum.core.account.AccountType;
 import ru.validum.core.address.Address;
+import ru.validum.core.address.AddressCorruptor;
 import ru.validum.core.address.AddressGenerator;
 import ru.validum.core.address.AddressStrategy;
+import ru.validum.core.address.AddressType;
 import ru.validum.core.address.FiasMode;
 import ru.validum.core.bank.Bank;
 import ru.validum.core.bank.BikGenerator;
 import ru.validum.core.bank.BikSource;
 import ru.validum.core.bank.BikSources;
 import ru.validum.core.common.Country;
+import ru.validum.core.common.PersonIds;
 import ru.validum.core.common.Region;
 import ru.validum.core.contact.Contact;
 import ru.validum.core.contact.ContactGenerator;
@@ -81,6 +84,9 @@ public final class IndividualProfileGenerator implements DataGenerator {
   private final FiasMode fiasMode;
   private final Gender gender;
   private final Integer age;
+  private final Integer ageMin;
+  private final Integer ageMax;
+  private final AgeDistribution ageDistribution;
   private final boolean withAccount;
   private final Boolean passportWasExchanged;
   private final PassportType passportType;
@@ -92,6 +98,13 @@ public final class IndividualProfileGenerator implements DataGenerator {
   private final String accountPackage;
   private final FamilyStatus familyStatus;
   private final Region region;
+
+  /**
+   * Регион прописки на текущий вызов {@code generate()}: либо явный {@code --region}, либо
+   * выбранный нами один раз. Паспорт выдаётся там же — иначе серия говорила бы об одном регионе,
+   * а «кем выдан» и адрес о другом.
+   */
+  private Region homeRegion;
   private final String secretWord;
   private final String personalManager;
   private final String email;
@@ -101,7 +114,9 @@ public final class IndividualProfileGenerator implements DataGenerator {
   private final String bik;
   private final Bank explicitBank;
   private final List<DocumentType> documentTypes;
+  private final boolean autoDocuments;
   private final LocalDate asOf;
+  private final Long seedValue;
 
   private final NameGenerator nameGen;
   private final PassportGenerator passportGen;
@@ -120,6 +135,9 @@ public final class IndividualProfileGenerator implements DataGenerator {
     this.fiasMode = b.fiasMode;
     this.gender = b.gender;
     this.age = b.age;
+    this.ageMin = b.ageMin;
+    this.ageMax = b.ageMax;
+    this.ageDistribution = b.ageDistribution;
     this.withAccount = b.withAccount;
     this.passportWasExchanged = b.passportWasExchanged;
     this.passportType = b.passportType;
@@ -140,7 +158,9 @@ public final class IndividualProfileGenerator implements DataGenerator {
     this.bik = b.bik;
     this.explicitBank = b.explicitBank;
     this.documentTypes = b.documentTypes;
+    this.autoDocuments = b.autoDocuments;
     this.asOf = b.asOf != null ? b.asOf : LocalDate.now();
+    this.seedValue = b.seedValue;
 
     this.nameGen = new NameGenerator(random);
     this.passportGen = new PassportGenerator(random);
@@ -164,7 +184,7 @@ public final class IndividualProfileGenerator implements DataGenerator {
   /** Связанный профиль с применением каскадных дефолтов. */
   public IndividualProfile generate() {
     Gender g = gender != null ? gender : (random.nextBoolean() ? Gender.MALE : Gender.FEMALE);
-    int a = age != null ? age : DEFAULT_AGE;
+    int a = pickAge();
     LocalDate birthDate = randomBirthDate(a);
 
     FamilyStatus fs = familyStatus != null ? familyStatus : familyStatusForAge(a);
@@ -185,16 +205,29 @@ public final class IndividualProfileGenerator implements DataGenerator {
         ? passportWasExchanged
         : (a >= PassportGenerator.AGE_FIRST_EXCHANGE);
 
+    // Нерезидент не может получить паспорт РФ: если тип не задан явно, берём иностранный.
+    PassportType effectivePassportType =
+      residency.isResident()
+        ? (passportType != null ? passportType : PassportType.RF)
+        : PassportType.FOREIGN;
+
     Country pCountry =
       passportCountry != null
         ? passportCountry
-        : (passportType == PassportType.FOREIGN ? residency.residentCountry() : Country.RU);
+        : (effectivePassportType == PassportType.FOREIGN
+            ? residency.residentCountry()
+            : Country.RU);
 
-    String regionCode = region != null ? region.code() : null;
+    // Один регион на человека: паспорт РФ выдан там же, где прописка.
+    homeRegion = region;
+    if (homeRegion == null && effectivePassportType == PassportType.RF && !livesAbroad()) {
+      homeRegion = Region.values()[random.nextInt(Region.values().length)];
+    }
+    String regionCode = homeRegion != null ? homeRegion.code() : null;
 
     Passport passport =
       passportGen.generate(
-        birthDate, asOf, exchanged, passportType, pCountry, regionCode);
+        birthDate, asOf, exchanged, effectivePassportType, pCountry, regionCode);
 
     String inn = innGen.generateIndividual();
     String snils = snilsGen.generateRaw();
@@ -216,8 +249,14 @@ public final class IndividualProfileGenerator implements DataGenerator {
       current = single;
     } else {
       registration = applyFiasMode(registrationFor());
-      post = applyFiasMode(addressGen.generatePost());
-      current = applyFiasMode(addressGen.generateCurrent());
+      post = applyFiasMode(addressFor(AddressType.POST));
+      current = applyFiasMode(addressFor(AddressType.CURRENT));
+    }
+
+    if (corruptFields.contains(CorruptField.ADDRESS)) {
+      registration = AddressCorruptor.corrupt(registration);
+      post = AddressCorruptor.corrupt(post);
+      current = AddressCorruptor.corrupt(current);
     }
 
     Contact mobile = contactGen.mobile();
@@ -234,7 +273,10 @@ public final class IndividualProfileGenerator implements DataGenerator {
             bank != null ? bank.bik() : AccountGenerator.NO_BANK_BIK)
         : null;
 
-    List<IdentityDocument> documents = generateDocuments(g, a, asOf);
+    List<IdentityDocument> documents = generateDocuments(g, birthDate, a, asOf, regionCode);
+
+    // personId детерминирован seed: тот же seed → тот же идентификатор в CLI и REST.
+    String personId = seedValue == null ? null : PersonIds.of(seedValue);
 
     return new IndividualProfile(
       name,
@@ -259,7 +301,46 @@ public final class IndividualProfileGenerator implements DataGenerator {
       bank,
       account,
       documents,
-      asOf);
+      asOf,
+      personId);
+  }
+
+  /** Возраст профиля: явное значение, иначе диапазон с распределением, иначе каскадный дефолт. */
+  private int pickAge() {
+    if (age != null) {
+      return age;
+    }
+    if (ageMin == null) {
+      return DEFAULT_AGE;
+    }
+    return ageDistribution == AgeDistribution.REALISTIC ? realisticAge() : uniformAge();
+  }
+
+  private int uniformAge() {
+    return ageMin + random.nextInt(ageMax - ageMin + 1);
+  }
+
+  /** Когорты «реалистичного» распределения: {от, до, вес в процентах}. */
+  private static final int[][] AGE_COHORTS = {
+    {0, 6, 6}, {7, 13, 7}, {14, 17, 5}, {18, 24, 10}, {25, 34, 18},
+    {35, 44, 17}, {45, 54, 14}, {55, 64, 13}, {65, 79, 8}, {80, 110, 2},
+  };
+
+  private int realisticAge() {
+    int roll = random.nextInt(100);
+    int accumulated = 0;
+    for (int[] cohort : AGE_COHORTS) {
+      accumulated += cohort[2];
+      if (roll < accumulated) {
+        int low = Math.max(cohort[0], ageMin);
+        int high = Math.min(cohort[1], ageMax);
+        if (low <= high) {
+          return low + random.nextInt(high - low + 1);
+        }
+        break;
+      }
+    }
+    return uniformAge();
   }
 
   /**
@@ -267,14 +348,18 @@ public final class IndividualProfileGenerator implements DataGenerator {
    *
    * @throws IllegalArgumentException если набор противоречит полу, возрасту или резидентству
    */
-  private List<IdentityDocument> generateDocuments(Gender g, int ageYears, LocalDate at) {
-    if (documentTypes.isEmpty()) {
+  private List<IdentityDocument> generateDocuments(
+    Gender g, LocalDate birthDate, int ageYears, LocalDate at, String regionCode) {
+    List<DocumentType> types = autoDocuments
+      ? DocumentRules.autoSelect(ageYears, g, residency)
+      : documentTypes;
+    if (types.isEmpty()) {
       return List.of();
     }
-    DocumentRules.validate(documentTypes, g, ageYears, residency);
+    DocumentRules.validate(types, g, ageYears, residency);
     List<IdentityDocument> generated = new ArrayList<>(documentTypes.size());
-    for (DocumentType type : documentTypes) {
-      generated.add(documentGen.generate(type, at));
+    for (DocumentType type : types) {
+      generated.add(documentGen.generate(type, birthDate, at, regionCode));
     }
     return List.copyOf(generated);
   }
@@ -301,9 +386,34 @@ public final class IndividualProfileGenerator implements DataGenerator {
   }
 
   private Address registrationFor() {
-    return region != null
-      ? addressGen.generateRegistration(region)
+    if (livesAbroad()) {
+      return addressGen.generateRegistrationOutsideRU(residency.residentCountry());
+    }
+    return homeRegion != null
+      ? addressGen.generateRegistration(homeRegion)
       : addressGen.generateRegistration();
+  }
+
+  /**
+   * Живёт ли клиент за границей: только нерезидент и без явно заданного региона РФ.
+   *
+   * <p>{@code --region} важнее гражданства: нерезидент из Таджикистана может жить в Москве, и
+   * тогда адрес берётся из КЛАДР, а паспорт остаётся иностранным.
+   */
+  private boolean livesAbroad() {
+    return !residency.isResident() && region == null;
+  }
+
+  /**
+   * Почтовый и фактический адреса: у нерезидента они в стране проживания, у резидента — по КЛАДР.
+   */
+  private Address addressFor(AddressType type) {
+    if (livesAbroad()) {
+      return addressGen.generateOutsideRU(residency.residentCountry(), type);
+    }
+    return type == AddressType.POST
+      ? (homeRegion != null ? addressGen.generatePost(homeRegion) : addressGen.generatePost())
+      : (homeRegion != null ? addressGen.generateCurrent(homeRegion) : addressGen.generateCurrent());
   }
 
   private FamilyStatus familyStatusForAge(int ageYears) {
@@ -375,11 +485,15 @@ public final class IndividualProfileGenerator implements DataGenerator {
   public static final class Builder {
 
     private Random random = DataGenerator.defaultRandom();
+    private Long seedValue;
     private BikSource bikSource = BikSources.defaultSource();
     private AddressStrategy addressStrategy = AddressStrategy.SAME_FOR_ALL;
     private FiasMode fiasMode = FiasMode.FULL;
     private Gender gender;
     private Integer age;
+    private Integer ageMin;
+    private Integer ageMax;
+    private AgeDistribution ageDistribution = AgeDistribution.UNIFORM;
     private boolean withAccount = true;
     private Boolean passportWasExchanged;
     private PassportType passportType = PassportType.RF;
@@ -400,12 +514,14 @@ public final class IndividualProfileGenerator implements DataGenerator {
     private String bik;
     private Bank explicitBank;
     private List<DocumentType> documentTypes = List.of();
+    private boolean autoDocuments;
     private LocalDate asOf;
 
     private Builder() {}
 
     public Builder seed(long seed) {
       this.random = DataGenerator.seededRandom(seed);
+      this.seedValue = seed;
       return this;
     }
 
@@ -467,6 +583,26 @@ public final class IndividualProfileGenerator implements DataGenerator {
 
     public Builder age(int age) {
       this.age = age;
+      return this;
+    }
+
+    /**
+     * Диапазон возраста {@code MIN-MAX}; при {@code --unique} каждый профиль берёт своё значение.
+     * С {@link #age(int)} явный возраст важнее диапазона.
+     */
+    public Builder ageRange(int min, int max) {
+      if (min < 0 || max > 110 || min > max) {
+        throw new IllegalArgumentException(
+          "Возрастной диапазон должен быть 0-110 и не перевёрнут, получено: " + min + "-" + max);
+      }
+      this.ageMin = min;
+      this.ageMax = max;
+      return this;
+    }
+
+    /** Распределение внутри {@link #ageRange(int, int)}; по умолчанию {@link AgeDistribution#UNIFORM}. */
+    public Builder ageDistribution(AgeDistribution distribution) {
+      this.ageDistribution = distribution == null ? AgeDistribution.UNIFORM : distribution;
       return this;
     }
 
@@ -574,6 +710,12 @@ public final class IndividualProfileGenerator implements DataGenerator {
     }
 
     /** Дополнительные документы из готового списка. */
+    /** Набор ДУЛ подобрать автоматически по возрасту, полу и резидентству ({@code --documents auto}). */
+    public Builder documentsAuto() {
+      this.autoDocuments = true;
+      return this;
+    }
+
     public Builder documents(List<DocumentType> types) {
       this.documentTypes = (types == null) ? List.of() : List.copyOf(types);
       return this;

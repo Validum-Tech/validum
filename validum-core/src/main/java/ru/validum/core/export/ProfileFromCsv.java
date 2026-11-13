@@ -64,7 +64,12 @@ public final class ProfileFromCsv {
       bank(row),
       row.get("account"),
       DocumentsCsv.parse(row.get(DocumentsCsv.COLUMN)),
-      asOf(row));
+      asOf(row),
+      blankToNull(row.get("personId")));
+  }
+
+  private static String blankToNull(String value) {
+    return value == null || value.isBlank() ? null : value;
   }
 
   /** Дата расчёта из CSV; пустая ячейка — «сегодня» (как и у профилей без asOf). */

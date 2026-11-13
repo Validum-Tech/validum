@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Random;
 import ru.validum.core.common.Country;
+import ru.validum.core.common.Region;
 import ru.validum.core.random.DataGenerator;
 
 /**
@@ -45,18 +46,17 @@ public final class PassportGenerator implements DataGenerator {
   private static final String STATUS_VALID = "Действительный";
   private static final String STATUS_EXPIRED = "Просрочен";
 
+  /**
+   * Коды регионов для префикса серии — ровно те, что есть в {@link Region}. Раньше здесь лежал
+   * отдельный список с кодами 45 и 34, которых в перечислении нет: серия «45…» получала паспорт,
+   * выданный в другом регионе, и собственная проверка согласованности этого не видела.
+   */
   private static final List<String> REGION_CODES =
-    List.of(
-      "45", "77", "78", "50", "47", "23", "66", "61", "02", "16", "74", "52", "34",
-      "63", "64");
+    java.util.Arrays.stream(Region.values()).map(Region::code).toList();
 
-  private static final List<String> RF_ISSUED_BY_TEMPLATES =
-    List.of(
-      "Отделением УФМС России по г. Москве",
-      "Отделом УФМС России по г. Санкт-Петербургу и Ленинградской области",
-      "Отделением УФМС России по Московской области",
-      "Отделом УФМС России по Краснодарскому краю",
-      "Отделением УФМС России по Свердловской области");
+  /** Как называется подразделение, выдавшее паспорт; регион подставляется отдельно. */
+  private static final List<String> ISSUER_PREFIXES =
+    List.of("Отделом УФМС России по ", "Отделением УФМС России по ", "ОУФМС России по ");
 
   private static final List<String> FOREIGN_ISSUED_BY_TEMPLATES =
     List.of("Consulate General", "Embassy", "Ministry of Foreign Affairs");
@@ -132,11 +132,19 @@ public final class PassportGenerator implements DataGenerator {
         FOREIGN_ISSUED_BY_TEMPLATES.get(random.nextInt(FOREIGN_ISSUED_BY_TEMPLATES.size()));
       issuedBy = template + " of " + country.countryName();
     } else {
-      issuedBy = RF_ISSUED_BY_TEMPLATES.get(random.nextInt(RF_ISSUED_BY_TEMPLATES.size()));
+      // «Кем выдан» согласован с регионом прописки: Московская область — не Екатеринбург.
+      Region issuer = Region.byCode(seriesPrefix);
+      if (issuer == null) {
+        issuer = Region.values()[random.nextInt(Region.values().length)];
+      }
+      issuedBy = ISSUER_PREFIXES.get(random.nextInt(ISSUER_PREFIXES.size()))
+        + issuer.department().ufms();
     }
 
+    // Код подразделения начинается с кода региона и должен согласовываться с серией:
+    // Москва (77) — 77Х-ХХХ, Башкортостан (02) — 02Х-ХХХ.
     String departmentCode =
-      String.format("%03d-%03d", 100 + random.nextInt(900), 1 + random.nextInt(999));
+      String.format("%s%d-%03d", seriesPrefix, 1 + random.nextInt(9), 1 + random.nextInt(999));
     String status = isExpired ? STATUS_EXPIRED : STATUS_VALID;
 
     return new Passport(

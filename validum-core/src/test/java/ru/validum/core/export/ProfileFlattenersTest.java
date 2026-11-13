@@ -52,16 +52,19 @@ class ProfileFlattenersTest {
     }
 
     @Test
-    @DisplayName("Порядок колонок фиксирован — fullName первый, documents последний")
+    @DisplayName("Порядок колонок фиксирован — personId первый, asOf последний")
     void columnOrderIsStable() {
       IndividualProfile p =
         IndividualProfileGenerator.builder().seed(SEED).build().generate();
       Map<String, String> row = IndividualProfileFlattener.flatten(p);
 
       List<String> keys = List.copyOf(row.keySet());
-      assertThat(keys.get(0)).isEqualTo("fullName");
-      assertThat(keys.get(keys.size() - 3)).isEqualTo("account");
-      assertThat(keys.get(keys.size() - 2)).isEqualTo("documents");
+      assertThat(keys.get(0)).isEqualTo("personId");
+      assertThat(keys.get(1)).isEqualTo("fullName");
+      assertThat(keys.get(keys.size() - 5)).isEqualTo("account");
+      assertThat(keys.get(keys.size() - 4)).isEqualTo("documents");
+      assertThat(keys.get(keys.size() - 3)).isEqualTo("isResident");
+      assertThat(keys.get(keys.size() - 2)).isEqualTo("citizenship");
       assertThat(keys.get(keys.size() - 1)).isEqualTo("asOf");
     }
 
@@ -108,7 +111,8 @@ class ProfileFlattenersTest {
       List<String> keys = List.copyOf(row.keySet());
 
       assertThat(keys.get(0)).isEqualTo("ogrnip");
-      assertThat(keys.get(1)).isEqualTo("fullName");
+      assertThat(keys.get(1)).isEqualTo("personId");
+      assertThat(keys.get(2)).isEqualTo("fullName");
       assertThat(row.get("ogrnip")).hasSize(15);
       assertThat(row.get("inn")).isEqualTo(base.inn());
     }
