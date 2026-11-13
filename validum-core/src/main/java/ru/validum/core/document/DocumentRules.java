@@ -1,6 +1,8 @@
 package ru.validum.core.document;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import ru.validum.core.name.Gender;
 import ru.validum.core.profile.Residency;
 
@@ -63,6 +65,57 @@ public final class DocumentRules {
     if (types.contains(DocumentType.DRIVER_LICENSE) && age < ADULT_AGE) {
       throw new IllegalArgumentException("Водительское удостоверение — с 18 лет, а задан " + age);
     }
+    for (DocumentType type : types) {
+      if (type == DocumentType.MILITARY_ID
+        || type == DocumentType.MILITARY_ID_RESERVE
+        || type == DocumentType.DRIVER_LICENSE) {
+        continue; // окна этих документов уже проверены выше — с точными сообщениями
+      }
+      if (age < type.minAge()) {
+        throw new IllegalArgumentException(
+          type.title() + " — не выдаётся раньше " + type.minAge() + " лет, а задан " + age);
+      }
+      if (type.maxAge() != null && age > type.maxAge()) {
+        throw new IllegalArgumentException(
+          type.title() + " — не выдаётся позже " + type.maxAge() + " лет, а задан " + age);
+      }
+    }
+  }
+
+  /**
+   * Подобрать правдоподобный набор ДУЛ по возрасту, полу и резидентству.
+   *
+   * <p>Правило держится на жизненных вехах: до 14 лет паспорта РФ нет, с 14 — есть; права
+   * и военный билет появляются с 18; военный билет рядового состава — только у мужчин
+   * призывного возраста. У нерезидента основным документом становится паспорт иностранного
+   * гражданина, а с 18 лет — ещё и вид на жительство.
+   *
+   * <p>Возвращённый набор гарантированно проходит {@link #validate}: автонабор не должен
+   * падать на собственных правилах.
+   */
+  public static List<DocumentType> autoSelect(int age, Gender gender, Residency residency) {
+    List<DocumentType> types = new ArrayList<>(4);
+    boolean nonResident = residency != null && !residency.isResident();
+
+    if (nonResident) {
+      types.add(DocumentType.PASSPORT_FOREIGN);
+      if (age >= ADULT_AGE) {
+        types.add(DocumentType.RESIDENCE_PERMIT);
+      }
+      return List.copyOf(types);
+    }
+
+    if (age < DocumentType.PASSPORT_RF.minAge()) {
+      return List.of();
+    }
+    types.add(DocumentType.PASSPORT_RF);
+    if (age >= ADULT_AGE) {
+      types.add(DocumentType.DRIVER_LICENSE);
+      if (gender == Gender.MALE && age <= MILITARY_MAX_AGE) {
+        types.add(DocumentType.MILITARY_ID);
+      }
+    }
+    return List.copyOf(types);
   }
 
   private static boolean hasMigrationDocument(Collection<DocumentType> types) {

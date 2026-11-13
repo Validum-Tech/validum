@@ -30,14 +30,24 @@ public final class CsvImporter {
 
   private CsvImporter() {}
 
-  /** Разбирает CSV-строку. */
+  /** Разбирает CSV-строку с разделителем по умолчанию (запятая). */
   public static List<Map<String, String>> parse(String csv) {
-    return parse(new StringReader(csv == null ? "" : csv));
+    return parse(csv, ',');
   }
 
-  /** Разбирает CSV из потока. */
+  /** Разбирает CSV-строку с явным разделителем ({@code ','} или {@code ';'}). */
+  public static List<Map<String, String>> parse(String csv, char delimiter) {
+    return parse(new StringReader(csv == null ? "" : csv), delimiter);
+  }
+
+  /** Разбирает CSV из потока с разделителем по умолчанию (запятая). */
   public static List<Map<String, String>> parse(Reader reader) {
-    List<List<String>> rows = readRows(readAll(reader));
+    return parse(reader, ',');
+  }
+
+  /** Разбирает CSV из потока с явным разделителем. */
+  public static List<Map<String, String>> parse(Reader reader, char delimiter) {
+    List<List<String>> rows = readRows(readAll(reader), delimiter);
     if (rows.isEmpty()) {
       return List.of();
     }
@@ -60,6 +70,10 @@ public final class CsvImporter {
    * <p>Пустые строки отбрасываются целиком — они не несут данных.
    */
   static List<List<String>> readRows(String text) {
+    return readRows(text, ',');
+  }
+
+  static List<List<String>> readRows(String text, char delimiter) {
     if (!text.isEmpty() && text.charAt(0) == BOM) {
       text = text.substring(1);
     }
@@ -92,7 +106,7 @@ public final class CsvImporter {
         i++;
         continue;
       }
-      if (c == ',') {
+      if (c == delimiter) {
         row.add(field.toString());
         field.setLength(0);
         i++;
@@ -121,6 +135,41 @@ public final class CsvImporter {
     if (!(row.size() == 1 && row.get(0).isEmpty())) {
       rows.add(row);
     }
+  }
+
+  /**
+   * Определяет разделитель по строке заголовков: {@code ';'} у «дружелюбного» CSV для Excel,
+   * {@code ','} у машинного. Кавычки учитываются, чтобы не считать разделители внутри значений.
+   */
+  public static char detectDelimiter(String headerLine) {
+    int commas = 0;
+    int semicolons = 0;
+    boolean quoted = false;
+    for (int i = 0; i < headerLine.length(); i++) {
+      char c = headerLine.charAt(i);
+      if (c == '"') {
+        quoted = !quoted;
+      } else if (!quoted && c == ',') {
+        commas++;
+      } else if (!quoted && c == ';') {
+        semicolons++;
+      }
+    }
+    return semicolons > commas ? ';' : ',';
+  }
+
+  /**
+   * Снимает обёртку {@code ="…"}: так {@link CsvExporter} помечает кодовые колонки, чтобы Excel не
+   * превращал ИНН в {@code 5,86E+11}. При чтении значения возвращаются как есть.
+   */
+  public static String unquoteFormula(String value) {
+    if (value != null
+        && value.length() >= 3
+        && value.startsWith("=\"")
+        && value.endsWith("\"")) {
+      return value.substring(2, value.length() - 1);
+    }
+    return value;
   }
 
   private static String readAll(Reader reader) {

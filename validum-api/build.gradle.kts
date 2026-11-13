@@ -5,26 +5,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
 }
 
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-    }
-}
-
-tasks.withType<JavaCompile>().configureEach {
-    options.encoding = "UTF-8"
-    options.compilerArgs.addAll(listOf("-Xlint:all", "-parameters"))
-}
-
-tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
-    // Справочник БИК для тестов: встроенного демо-набора в продукте нет,
-    // поэтому тесты явно указывают файл ED807 (см. BikSources).
-    systemProperty(
-        "validum.bik.file",
-        file("src/test/resources/bik-sample.xml").absolutePath,
-    )
-}
+// toolchain 21, UTF-8, -Xlint, junit platform и validum.bik.file — в корневом build.gradle.kts.
 
 dependencies {
     implementation(project(":validum-core"))

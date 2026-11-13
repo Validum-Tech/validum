@@ -84,10 +84,15 @@ public final class GenerateCommand implements Callable<Integer> {
     command.noAccount = Boolean.TRUE.equals(s.noAccount());
     command.region = s.region();
     command.age = s.age();
+    command.ageRange = s.ageRange();
+    if (s.ageDistribution() != null) command.ageDistribution = s.ageDistribution();
     command.gender = s.gender();
     command.bik = s.bik();
     command.documents = s.documents() == null ? null : s.documents().split(",");
+    command.corrupt = s.corrupt() == null ? null : s.corrupt().split(",");
     command.documentsMode = s.documentsMode() == null ? "inline" : s.documentsMode();
+    command.residency = s.residency() == null ? "resident" : s.residency();
+    command.country = s.country();
     command.dialect = s.dialect() == null ? "postgres" : s.dialect();
     command.table = s.table() == null ? "validum_individual" : s.table();
     command.noDdl = Boolean.TRUE.equals(s.noDdl());
@@ -106,6 +111,8 @@ public final class GenerateCommand implements Callable<Integer> {
     command.blocked = Boolean.TRUE.equals(s.blocked());
     command.region = s.region();
     command.age = s.age();
+    command.ageRange = s.ageRange();
+    if (s.ageDistribution() != null) command.ageDistribution = s.ageDistribution();
     command.gender = s.gender();
     command.bik = s.bik();
     command.okved = s.okved();

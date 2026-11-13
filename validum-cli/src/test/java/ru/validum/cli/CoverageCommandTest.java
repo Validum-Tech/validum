@@ -7,10 +7,14 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import picocli.CommandLine;
 import ru.validum.core.bank.BikSources;
+import ru.validum.core.export.CsvExporter;
+import ru.validum.core.export.IndividualProfileFlattener;
 import ru.validum.core.profile.IndividualProfile;
 import ru.validum.core.profile.IndividualProfileGenerator;
 
@@ -40,6 +44,52 @@ class CoverageCommandTest {
     assertThat(out).contains("snils");
     // ИНН Петрова не проходит контрольную сумму — в отчёте должна быть цифра, а не «—».
     assertThat(out).containsPattern("inn\\s+100% \\(2/2\\)\\s+2\\s+1");
+  }
+
+  @Test
+  void unwrapsExcelFormulaCells() throws Exception {
+    IndividualProfile profile = IndividualProfileGenerator.builder()
+      .bikSource(BikSources.resolve("src/test/resources/bik-sample.xml"))
+      .seed(4)
+      .build()
+      .generate();
+    Path csv = tmp.resolve("excel.csv");
+    Files.writeString(
+      csv,
+      "\uFEFFfullName;inn;age\n"
+        + "Иванов;\"=\"\"" + profile.inn() + "\"\"\";30\n");
+
+    String out = run("coverage", "--file", csv.toString());
+
+    assertThat(out).contains("rows=1");
+    assertThat(out).contains("Согласованность: нарушений нет");
+    // Обёртка ="…" снята: ИНН проверяется и валиден, в колонке «невалидных» — 0.
+    assertThat(out).containsPattern("inn\\s+100% \\(1/1\\)\\s+1\\s+0");
+  }
+
+  @Test
+  void checksFriendlyCsvWithRussianHeaders() throws Exception {
+    IndividualProfile profile = IndividualProfileGenerator.builder()
+      .bikSource(BikSources.resolve("src/test/resources/bik-sample.xml"))
+      .seed(9)
+      .asOf(LocalDate.of(2026, 1, 15))
+      .age(30)
+      .build()
+      .generate();
+    Path csv = tmp.resolve("friendly.csv");
+    Files.writeString(
+      csv,
+      CsvExporter.toCsv(
+        List.of(IndividualProfileFlattener.flatten(profile)), ';', true),
+      StandardCharsets.UTF_8);
+
+    String out = run("coverage", "--file", csv.toString());
+
+    // Главное: русские заголовки переведены в ключи, поля реально проверены.
+    assertThat(out).contains("Согласованность: нарушений нет");
+    assertThat(out).containsPattern("inn\\s+100% \\(1/1\\)\\s+1\\s+0");
+    assertThat(out).containsPattern("snils\\s+100% \\(1/1\\)\\s+1\\s+0");
+    assertThat(out).contains("Распределения");
   }
 
   @Test

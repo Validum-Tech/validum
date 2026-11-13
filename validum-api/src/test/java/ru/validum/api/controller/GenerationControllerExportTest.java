@@ -60,7 +60,7 @@ class GenerationControllerExportTest {
       .andExpect(status().isOk())
       .andExpect(content().contentType(new MediaType("text", "csv", StandardCharsets.UTF_8)))
       .andExpect(content().string(startsWith("\uFEFF")))
-      .andExpect(content().string(containsString("ogrnip,fullName")));
+      .andExpect(content().string(containsString("ogrnip,personId,fullName")));
   }
 
   @Test

@@ -2,31 +2,15 @@ plugins {
     `java-library`
 }
 
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-    }
-}
-
-tasks.withType<JavaCompile>().configureEach {
-    options.encoding = "UTF-8"
-    options.compilerArgs.addAll(listOf("-Xlint:all", "-parameters"))
-}
-
-tasks.withType<Test>().configureEach {
-    useJUnitPlatform()
-    // Справочник БИК для тестов: встроенного демо-набора в продукте нет.
-    systemProperty(
-        "validum.bik.file",
-        file("src/test/resources/bik-sample.xml").absolutePath,
-    )
-}
+// toolchain, release, UTF-8, -Xlint и validum.bik.file — в корневом build.gradle.kts (subprojects).
 
 dependencies {
     implementation(project(":validum-core"))
 
-    // Allure (2.35.x): allure-jupiter заменил allure-junit5
-    implementation("io.qameta.allure:allure-jupiter:2.35.3")
+    // C11: версию Allure НЕ навязываем.
+    // Компилируемся против минимального API (2.29.1) и не публикуем зависимость в POM:
+    // потребитель приносит свою версию (allure-junit5 2.29.x, allure-jupiter 2.35.x, любую 2.x).
+    compileOnly("io.qameta.allure:allure-java-commons:2.29.1")
 
     // JUnit API нужен в main-коде: BeforeEachCallback, ExtensionContext
     implementation("org.junit.jupiter:junit-jupiter-api:5.11.3")
@@ -35,6 +19,8 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2")
 
+    // Прогоняем наши тесты на самом старом API, который обещаем поддерживать.
+    testRuntimeOnly("io.qameta.allure:allure-java-commons:2.29.1")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.assertj:assertj-core:3.26.3")

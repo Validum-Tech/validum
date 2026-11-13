@@ -9,7 +9,7 @@ import ru.validum.core.bank.BikSourceNotFoundException;
 @Command(
   name = "validum",
   mixinStandardHelpOptions = true,
-  version = "validum 0.1.0",
+  versionProvider = VersionProvider.class,
   description = "Validum — генератор валидных данных для российского финтеха и госсектора",
   subcommands = {
     GenerateCommand.class,
@@ -20,6 +20,7 @@ import ru.validum.core.bank.BikSourceNotFoundException;
     ScenariosCommand.class,
     ExportCommand.class,
     CoverageCommand.class,
+    DescribeCommand.class,
     VersionCommand.class,
   }
 )

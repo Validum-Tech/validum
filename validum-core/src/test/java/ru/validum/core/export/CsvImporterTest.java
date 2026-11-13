@@ -107,4 +107,41 @@ class CsvImporterTest {
     assertThat(rows).hasSize(2);
     assertThat(rows.get(1)).containsExactly("1,5", "2");
   }
+
+  @Test
+  @DisplayName("Точка с запятой как разделитель: «дружелюбный» CSV")
+  void semicolonDelimiter() {
+    List<Map<String, String>> rows =
+      CsvImporter.parse("ИНН;ФИО\n1234567890;Иванов Иван\n", ';');
+
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0))
+      .containsEntry("ИНН", "1234567890")
+      .containsEntry("ФИО", "Иванов Иван");
+  }
+
+  @Test
+  @DisplayName("Запятая внутри кавычек не считается разделителем")
+  void semicolonKeepsCommasInQuotes() {
+    List<Map<String, String>> rows =
+      CsvImporter.parse("inn;address\n500100732259;\"Москва, ул. Тверская\"\n", ';');
+
+    assertThat(rows.get(0)).containsEntry("address", "Москва, ул. Тверская");
+  }
+
+  @Test
+  @DisplayName("Разделитель определяется по заголовку, кавычки не путают")
+  void detectsDelimiter() {
+    assertThat(CsvImporter.detectDelimiter("inn;fullName;city")).isEqualTo(';');
+    assertThat(CsvImporter.detectDelimiter("inn,fullName,city")).isEqualTo(',');
+    assertThat(CsvImporter.detectDelimiter("\"a;b\",c")).isEqualTo(',');
+  }
+
+  @Test
+  @DisplayName("Обёртка =\"…\" снимается, обычное значение не трогается")
+  void unquotesFormula() {
+    assertThat(CsvImporter.unquoteFormula("=\"500100732259\"")).isEqualTo("500100732259");
+    assertThat(CsvImporter.unquoteFormula("500100732259")).isEqualTo("500100732259");
+    assertThat(CsvImporter.unquoteFormula("")).isEmpty();
+  }
 }

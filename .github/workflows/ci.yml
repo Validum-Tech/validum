@@ -104,6 +104,31 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+  build-jdk17:
+    name: Build & Test (JDK 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '17'
+          cache: gradle
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # C10: полоса совместимости «порог Java 17».
+      # toolchain 17 + release 17 проверяют именно то, что обещано потребителю на 17.
+      # validum-api сюда не входит: Spring Boot 3.5 требует 21 (см. COMPATIBILITY).
+      - name: Build and test on JDK 17
+        run: ./gradlew :validum-core:build :validum-allure:build :validum-cli:build -Pvalidum.javaToolchain=17 --no-daemon
+
   windows:
     name: Build & Test (Windows)
     runs-on: windows-latest

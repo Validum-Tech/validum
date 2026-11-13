@@ -32,6 +32,45 @@ allprojects {
 // Порядок получения ключей и токена — docs/RELEASING.md.
 // ---------------------------------------------------------------------------------------------
 subprojects {
+    // ---------------------------------------------------------------------------------------
+    // Общая конфигурация компиляции и тестов — одна копия вместо четырёх модульных.
+    // Отличается только «пол» байткода: библиотеки (core/allure) и CLI обещают Java 17,
+    // REST-сервис собирается под 21 (его поднимает Spring Boot 3.5).
+    // ---------------------------------------------------------------------------------------
+    val moduleRelease = if (name == "validum-api") 21 else 17
+
+    plugins.withId("java") {
+        extensions.configure<JavaPluginExtension> {
+            toolchain {
+                // CI-полоса JDK 17 передаёт -Pvalidum.javaToolchain=17.
+                languageVersion.set(
+                    JavaLanguageVersion.of(
+                        providers.gradleProperty("validum.javaToolchain")
+                            .getOrElse(moduleRelease.toString())
+                    )
+                )
+            }
+        }
+
+        tasks.withType<JavaCompile>().configureEach {
+            options.encoding = "UTF-8"
+            options.compilerArgs.addAll(listOf("-Xlint:all", "-parameters"))
+            if (name != "validum-api") {
+                // Контракт совместимости: байткод Java 17 (major 61) при сборке на 21.
+                options.release.set(17)
+            }
+        }
+
+        tasks.withType<Test>().configureEach {
+            useJUnitPlatform()
+            // Справочник БИК для тестов: встроенного демо-набора в продукте нет.
+            systemProperty(
+                "validum.bik.file",
+                file("src/test/resources/bik-sample.xml").absolutePath,
+            )
+        }
+    }
+
     // Javadoc пишем по-русски и не валим сборку на строгом doclint
     tasks.withType<Javadoc>().configureEach {
         (options as StandardJavadocDocletOptions).apply {

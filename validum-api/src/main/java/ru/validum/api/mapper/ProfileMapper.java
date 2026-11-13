@@ -28,6 +28,7 @@ public class ProfileMapper {
 
   public IndividualProfileDto toDto(IndividualProfile profile) {
     return new IndividualProfileDto(
+      profile.personId(),
       profile.fullName(),
       profile.gender().name(),
       profile.birthDate().format(DATE_FORMAT),

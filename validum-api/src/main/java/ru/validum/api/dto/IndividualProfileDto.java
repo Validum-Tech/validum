@@ -5,6 +5,9 @@ import java.util.List;
 
 @Schema(description = "Связанный профиль физлица")
 public record IndividualProfileDto(
+  @Schema(
+    description = "Детерминированный идентификатор: тот же seed даёт тот же personId",
+    example = "pd-9f2a6c1d0b7e4a53") String personId,
   @Schema(example = "Кузнецов Александр Владимирович") String fullName,
   @Schema(example = "MALE") String gender,
   @Schema(example = "1988-03-12") String birthDate,

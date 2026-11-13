@@ -18,6 +18,8 @@ import ru.validum.core.export.DocumentsCsv;
 import ru.validum.core.export.DocumentsFormat;
 import ru.validum.core.export.IndividualProfileFlattener;
 import ru.validum.core.name.Gender;
+import ru.validum.core.profile.AgeDistribution;
+import ru.validum.core.profile.CorruptField;
 import ru.validum.core.profile.IndividualProfile;
 import ru.validum.core.profile.IndividualProfileGenerator;
 
@@ -44,11 +46,27 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
   @Option(names = "--gender", description = "MALE или FEMALE")
   String gender;
 
-  @Option(names = "--age", description = "Возраст")
+  @Option(names = "--age", description = "Возраст (одно число); для набора используйте --age-range")
   Integer age;
+
+  @Option(names = "--age-range",
+    description = "Диапазон возраста MIN-MAX (0–110), например 18-70; каждый профиль берёт своё значение")
+  String ageRange;
+
+  @Option(names = "--age-distribution", defaultValue = "uniform",
+    description = "Распределение возраста в диапазоне: uniform | realistic (когорты трудоспособных)")
+  String ageDistribution;
 
   @Option(names = "--region", description = "Регион: имя (MOSCOW, SPB, …) или код субъекта (77)")
   String region;
+
+  @Option(names = "--residency", defaultValue = "resident",
+      description = "Резидентство: resident | non-resident")
+  String residency;
+
+  @Option(names = "--country",
+      description = "Страна нерезидента (KZ, BY, UZ, KG, AM, GE, UA, DE, US); по умолчанию KZ")
+  String country;
 
   @Option(names = "--bik",
     description = "Явный БИК банка (P3.3). Не найден в справочнике → exit 2")
@@ -69,7 +87,7 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
 
 
   @Option(names = "--documents", split = ",",
-    description = "Виды ДУЛ: коды СПДУЛ (21,22) или имена (PASSPORT_RF,FOREIGN_PASSPORT)")
+    description = "Виды ДУЛ: коды СПДУЛ (21,22), имена (PASSPORT_RF) или auto — подобрать по возрасту и полу")
   String[] documents;
 
   @Option(names = "--documents-mode", defaultValue = "inline",
@@ -78,6 +96,17 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
 
   @Option(names = {"-o", "--output"}, description = "Путь к файлу (по умолчанию stdout)")
   Path output;
+
+  @Option(
+    names = "--corrupt",
+    split = ",",
+    description = "Намеренно испортить поля для негативных тестов: inn, snils, address")
+  String[] corrupt;
+
+  @Option(
+    names = "--index",
+    description = "Печатать индекс набора (№, идентификатор, ФИО, возраст, регион, банк, счёт) в stderr")
+  boolean index;
 
   @Option(names = "--no-account", description = "Без счёта")
   boolean noAccount;
@@ -134,11 +163,40 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
 
     List<Map<String, String>> rows = IndividualProfileFlattener.flattenAll(profiles, docFormat);
     OutputMeta.print(System.err, baseSeed, asOfDate, seed == null);
+    if (corrupt != null && corrupt.length > 0) {
+      System.err.println("# испорчено: " + String.join(",", corrupt).toLowerCase(Locale.ROOT));
+    }
     OutputWriter.of(output, fmt, dialect, table, !noDdl).write(rows, baseSeed);
     if (docFormat == DocumentsFormat.SPLIT) {
       writeDocumentsTable(profiles, output);
     }
+    if (index) {
+      printIndex(profiles);
+    }
     return 0;
+  }
+
+  /** Индекс набора — по нему QA выбирает человека и зовёт {@code describe --person}. */
+  private static void printIndex(List<IndividualProfile> profiles) {
+    System.err.println();
+    System.err.printf("%-5s %-26s %-34s %7s  %-22s %-38s %-20s%n",
+      "№", "Идентификатор", "ФИО", "Возраст", "Регион", "Банк", "Счёт");
+    for (int i = 0; i < profiles.size(); i++) {
+      IndividualProfile p = profiles.get(i);
+      String bank = p.hasAccount()
+        ? p.bank().name() + " · " + p.bank().bik()
+        : "—";
+      System.err.printf("%-5d %-26s %-34s %7d  %-22s %-38s %-20s%n",
+        i + 1,
+        p.personId() == null ? "—" : p.personId(),
+        p.fullName(),
+        p.age(),
+        p.registrationAddress().region() == null ? "—" : p.registrationAddress().region(),
+        bank,
+        p.hasAccount() ? p.account() : "—");
+    }
+    System.err.println();
+    System.err.println("# выбрать человека: validum describe --file <набор> --person <идентификатор>");
   }
 
   /** Свежий билдер профиля под конкретный seed: опции командной строки применяются заново. */
@@ -149,13 +207,97 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
       .withAccount(!noAccount);
     if (gender != null) b.gender(Gender.valueOf(gender.toUpperCase(Locale.ROOT)));
     if (age != null) b.age(age);
+    if (ageRange != null) {
+      int[] range = parseAgeRange(ageRange);
+      b.ageRange(range[0], range[1]).ageDistribution(parseAgeDistribution(ageDistribution));
+    }
     if (region != null) b.region(RegionOption.parse(region));
+    b.residency(parseResidency(residency, country));
     if (bik != null) b.bik(bik);
     if (asOfDate != null) b.asOf(asOfDate);
-    if (documents != null) b.documents(parseTypes(documents));
+    applyDocuments(b);
+    if (corrupt != null && corrupt.length > 0) {
+      b.corrupt(parseCorrupt(corrupt));
+    }
     if (terrorist) b.terrorist(true);
     if (blocked) b.blocked(true);
     return b;
+  }
+
+  /**
+   * Резидентство: {@code resident} (по умолчанию) или {@code non-resident} со страной.
+   * Страна нерезидента задаётся {@code --country}; по умолчанию Казахстан — самый частый
+   * кейс трудовой миграции в банковских данных.
+   */
+  private static ru.validum.core.profile.Residency parseResidency(String raw, String countryRaw) {
+    boolean nonResident = raw != null && raw.trim().equalsIgnoreCase("non-resident");
+    if (countryRaw == null || countryRaw.isBlank()) {
+      return nonResident
+        ? ru.validum.core.profile.Residency.nonResident(ru.validum.core.common.Country.KZ)
+        : ru.validum.core.profile.Residency.residentRU();
+    }
+    ru.validum.core.common.Country parsed;
+    try {
+      parsed = ru.validum.core.common.Country.valueOf(countryRaw.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+        "Неизвестная страна: '" + countryRaw + "'. Допустимо: KZ, BY, UZ, KG, AM, GE, UA, DE, US, TJ, RU");
+    }
+    if (!nonResident) {
+      return ru.validum.core.profile.Residency.residentRU();
+    }
+    return ru.validum.core.profile.Residency.nonResident(parsed);
+  }
+
+  private static int[] parseAgeRange(String raw) {
+    String[] parts = raw.trim().split("-", 2);
+    if (parts.length == 2) {
+      try {
+        return new int[] { Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()) };
+      } catch (NumberFormatException ignored) {
+        // падаем ниже с общим сообщением
+      }
+    }
+    throw new IllegalArgumentException(
+      "Возрастной диапазон задан неверно: '" + raw + "'. Ожидается MIN-MAX, например 18-70");
+  }
+
+  private static AgeDistribution parseAgeDistribution(String raw) {
+    try {
+      return AgeDistribution.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+        "Неизвестное распределение возраста: '" + raw + "'. Допустимо: uniform, realistic");
+    }
+  }
+
+  /** {@code --documents auto} — набор по возрасту и полу; иначе явный список кодов/имён. */
+  /** Разбор {@code --corrupt}: регистр не важен, опечатка отклоняется с подсказкой. */
+  private static CorruptField[] parseCorrupt(String[] raw) {
+    java.util.List<CorruptField> fields = new java.util.ArrayList<>();
+    for (String item : raw) {
+      if (item == null || item.isBlank()) {
+        continue;
+      }
+      try {
+        fields.add(CorruptField.valueOf(item.trim().toUpperCase(Locale.ROOT)));
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(
+          "Неизвестное поле для --corrupt: '" + item.trim() + "'. Допустимо: inn, snils, address");
+      }
+    }
+    return fields.toArray(new CorruptField[0]);
+  }
+
+  private void applyDocuments(IndividualProfileGenerator.Builder b) {
+    if (documents == null || documents.length == 0) {
+      return;
+    }
+    if (documents.length == 1 && documents[0].trim().equalsIgnoreCase("auto")) {
+      b.documentsAuto();
+      return;
+    }
+    b.documents(parseTypes(documents));
   }
 
   private static List<DocumentType> parseTypes(String[] values) {

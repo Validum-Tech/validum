@@ -49,6 +49,7 @@ public final class IndividualProfileFlattener {
    */
   public static Map<String, String> flatten(IndividualProfile p, DocumentsFormat format) {
     Map<String, String> m = new LinkedHashMap<>();
+    m.put("personId", p.personId() == null ? "" : p.personId());
     m.put("fullName", p.fullName());
     m.put("gender", p.gender().name());
     m.put("birthDate", formatDate(p.birthDate()));
@@ -76,6 +77,9 @@ public final class IndividualProfileFlattener {
       case SPLIT -> "";
       case INLINE -> DocumentsCsv.inline(documents);
     });
+    // Резидентство видно в плоской выдаче: по нему скрипты решают, какой набор ДУЛ ожидать.
+    m.put("isResident", String.valueOf(p.residency().isResident()));
+    m.put("citizenship", p.residency().citizenship().isoCode());
     m.put("asOf", formatDate(p.asOf()));
     return m;
   }

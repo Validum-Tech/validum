@@ -188,7 +188,7 @@ class CliSmokeTest {
       .isZero();
 
     String csv = Files.readString(out, StandardCharsets.UTF_8);
-    assertThat(csv).contains("ogrnip,fullName");
+    assertThat(csv).contains("ogrnip,personId,fullName");
   }
 
   @Test

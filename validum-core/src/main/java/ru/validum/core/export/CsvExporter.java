@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -26,6 +27,19 @@ public final class CsvExporter {
 
   /** Русские заголовки для колонок профиля; неизвестная колонка остаётся как есть. */
   private static final Map<String, String> RUS_HEADERS = rusHeadersMap();
+
+  /**
+   * Колонки-коды: в «дружелюбном» CSV их надо отдавать текстом, иначе Excel угадывает тип и
+   * портит данные — ИНН {@code 586272979740} показывает как {@code 5,86E+11}, счёт из 20 цифр
+   * теряет точность, индекс {@code 053796} теряет ведущий ноль.
+   */
+  /** Обратный словарь к {@link #RUS_HEADERS}. */
+  private static final Map<String, String> KEY_BY_RUS = keyByRussian();
+
+  private static final Set<String> EXCEL_TEXT_KEYS = Set.of(
+    "inn", "snils", "account", "bankCorrAccount", "bankBik", "kpp", "ogrn", "ogrnip", "okpo",
+    "registrationPostalCode", "postPostalCode", "currentPostalCode",
+    "passportSeries", "passportNumber", "mobileValue");
 
   private CsvExporter() {}
 
@@ -60,7 +74,11 @@ public final class CsvExporter {
       .append(NEWLINE);
     for (Map<String, String> row : rows) {
       sb.append(headers.stream()
-          .map(h -> escape(row.getOrDefault(h, ""), delimiter))
+          .map(h -> escape(
+              russianHeaders
+                  ? excelText(h, row.getOrDefault(h, ""))
+                  : row.getOrDefault(h, ""),
+              delimiter))
           .collect(Collectors.joining(delim)))
         .append(NEWLINE);
     }
@@ -72,9 +90,42 @@ public final class CsvExporter {
     return RUS_HEADERS.getOrDefault(key, key);
   }
 
+  /**
+   * Обратный перевод: русский заголовок → внутренний ключ колонки. Нужен инструментам, которые
+   * читают «дружелюбный» CSV (например, {@code coverage}), чтобы проверки работали одинаково на
+   * файле с русскими и английскими заголовками.
+   */
+  public static String internalKey(String header) {
+    if (header == null) {
+      return null;
+    }
+    return KEY_BY_RUS.getOrDefault(header.trim(), header.trim());
+  }
+
   /** Экранирует значение для разделителя «,» (совместимость). */
   public static String escape(String value) {
     return escape(value, ',');
+  }
+
+  /**
+   * Значение-код для «дружелюбного» CSV: оборачивает в формулу {@code ="…"}, чтобы Excel
+   * показал его текстом и не потерял ведущие нули и 20-значные счета. Оборачиваются только
+   * непустые значения из {@link #EXCEL_TEXT_KEYS}, состоящие из букв, цифр, пробела и
+   * {@code + - ( )} — иначе значение остаётся как есть (кавычка внутри сломала бы формулу).
+   */
+  static String excelText(String key, String value) {
+    if (value == null || value.isEmpty() || !EXCEL_TEXT_KEYS.contains(key)) {
+      return value == null ? "" : value;
+    }
+    for (int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      boolean allowed =
+        Character.isLetterOrDigit(c) || c == '+' || c == '-' || c == '(' || c == ')' || c == ' ';
+      if (!allowed) {
+        return value;
+      }
+    }
+    return "=\"" + value + "\"";
   }
 
   /**
@@ -107,8 +158,15 @@ public final class CsvExporter {
     return csv.substring(1).getBytes(StandardCharsets.UTF_8);
   }
 
+  private static Map<String, String> keyByRussian() {
+    Map<String, String> reverse = new LinkedHashMap<>();
+    RUS_HEADERS.forEach((key, rus) -> reverse.put(rus, key));
+    return reverse;
+  }
+
   private static Map<String, String> rusHeadersMap() {
     Map<String, String> m = new LinkedHashMap<>();
+    m.put("personId", "Идентификатор");
     m.put("fullName", "ФИО");
     m.put("gender", "Пол");
     m.put("birthDate", "Дата рождения");
@@ -163,6 +221,8 @@ public final class CsvExporter {
     m.put("bankRegion", "Регион банка");
     m.put("account", "Счёт");
     m.put("documents", "Документы");
+    m.put("isResident", "Резидент");
+    m.put("citizenship", "Гражданство");
     m.put("asOf", "Дата расчёта");
     m.put("type", "Тип");
     m.put("name", "Наименование");
@@ -184,10 +244,10 @@ public final class CsvExporter {
     m.put("title", "Название");
     m.put("series", "Серия");
     m.put("number", "Номер");
-    m.put("issuedBy", "Кем выдан");
-    m.put("issueDate", "Дата выдачи");
+    m.put("issuedBy", "Кем выдан (документ)");
+    m.put("issueDate", "Дата выдачи (документ)");
     m.put("expirationDate", "Действителен до");
-    m.put("departmentCode", "Код подразделения");
+    m.put("departmentCode", "Код подразделения (документ)");
     m.put("profileKey", "Ключ профиля");
     return m;
   }

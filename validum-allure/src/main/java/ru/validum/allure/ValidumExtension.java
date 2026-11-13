@@ -3,10 +3,7 @@ package ru.validum.allure;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import io.qameta.allure.Allure;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -84,8 +81,8 @@ public final class ValidumExtension implements BeforeEachCallback {
   private void attachProfile(IndividualProfile profile) throws IOException {
     Map<String, String> flat = IndividualProfileFlattener.flatten(profile);
     String json = JSON.writeValueAsString(flat);
-    try (InputStream stream = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))) {
-      Allure.getLifecycle().addAttachment("Validum Profile", "application/json", "json", stream);
-    }
+    // Только статический фасад Allure: одинаково работает и в 2.29.x (allure-junit5),
+    // и в 2.35.x (allure-jupiter) — см. AllureDependencyFloorTest.
+    Allure.addAttachment("Validum Profile", "application/json", json, "json");
   }
 }
