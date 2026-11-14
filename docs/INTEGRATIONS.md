@@ -5,7 +5,7 @@ Java-библиотека и JUnit 5 + Allure: как подключить valid
 ## 🎭 Allure Extension (P3.2)
 
 ```kotlin
-testImplementation("io.github.validum-tech:validum-allure:0.4.0")
+testImplementation("io.github.validum-tech:validum-allure:0.4.1")
 ```
 
 ```java

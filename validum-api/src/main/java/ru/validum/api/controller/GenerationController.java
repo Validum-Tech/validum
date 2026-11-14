@@ -64,6 +64,15 @@ public class GenerationController {
 
   // ── Батчи ─────────────────────────────────────────────────────────────────
 
+  /** `?fields=` осмыслен только для CSV: JSON отдаёт структурированный DTO, а не плоские колонки. */
+  private static void requireCsvForFields(String format, String fields) {
+    if (fields != null && !format.toLowerCase().startsWith("csv")) {
+      throw new IllegalArgumentException(
+        "Параметр fields применяется только к format=csv|csv-semicolon; "
+          + "для json/json-array набор уже структурирован");
+    }
+  }
+
   @PostMapping(value = "/individual/batch")
   @Operation(
     summary = "Сгенерировать пакет профилей физлиц",
@@ -75,6 +84,7 @@ public class GenerationController {
     @Parameter(description = "Оставить только эти колонки CSV (через запятую) или пресет short")
     @RequestParam(required = false) String fields) {
 
+    requireCsvForFields(format, fields);
     return switch (format.toLowerCase()) {
       case "json-array" ->
         okWithMeta(service.generateIndividualBatch(request).profiles(), request.seed());
@@ -107,6 +117,7 @@ public class GenerationController {
     @Parameter(description = "Оставить только эти колонки CSV (через запятую) или пресет short")
     @RequestParam(required = false) String fields) {
 
+    requireCsvForFields(format, fields);
     return switch (format.toLowerCase()) {
       case "json-array" ->
         okWithMeta(service.generateIpBatch(request).profiles(), request.seed());
@@ -139,6 +150,7 @@ public class GenerationController {
     @Parameter(description = "Оставить только эти колонки CSV (через запятую) или пресет short")
     @RequestParam(required = false) String fields) {
 
+    requireCsvForFields(format, fields);
     return switch (format.toLowerCase()) {
       case "json-array" ->
         okWithMeta(service.generateOrganizationBatch(request).profiles(), request.seed());

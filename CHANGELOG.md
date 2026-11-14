@@ -6,6 +6,18 @@
 
 Ничего не запланировано — состав следующей версии определится после 0.4.0.
 
+## [0.4.1] — 2026-11-14
+
+Патч: REST-сервис больше не принимает `?fields=` молча для JSON-форматов.
+
+### Fixed
+- `POST /api/v1/generate/{individual,ip,organization}/batch?fields=…&format=json|json-array`
+  теперь отвечает `400 {"error":"invalid_argument"}` с подсказкой про `format=csv`; раньше параметр
+  игнорировался и клиент получал полный набор, не зная об этом.
+- `tools/rest-smoke.py` читает БИК из вложенного `bank.bik` (раньше `validate/account` падал с пустым
+  БИК), смоук REST в CI берёт boot-jar, а не `-plain.jar`, `tools/consumer-smoke.py` вызывает
+  `BikSources.resolve(String)`.
+
 ## [0.4.0] — 2026-11-14
 
 Планируется: `--format xlsx` без зависимостей, разложение `core/export` по слоям,
@@ -101,6 +113,8 @@
 - `--fields` для `generate individual|ip|organization`: оставить только нужные колонки
   (пресет `short` — «человеческий» набор). В спецификации — `"fields"`, в REST — `?fields=`
   для CSV-батчей; неизвестная колонка даёт ошибку со списком доступных, а не пустой столбец.
+  `?fields=` вместе с `format=json|json-array` отбивается `400 invalid_argument` — для JSON набор
+  уже структурирован, и молча игнорировать параметр нельзя.
 
 ### Changed
 - **README разложен по `docs/*`:** лендинг на 71 строку (что это, 30 секунд, таблица разделов,
@@ -301,7 +315,8 @@
 Требования: JDK 21. Справочник `data/ED807.xml` обязателен — `validum fetch-bik -o data/ED807.xml`.
 Порядок выпуска версии — `docs/RELEASING.md`.
 
-[Unreleased]: https://github.com/Validum-Tech/validum/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Validum-Tech/validum/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/Validum-Tech/validum/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Validum-Tech/validum/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Validum-Tech/validum/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Validum-Tech/validum/releases/tag/v0.2.0
