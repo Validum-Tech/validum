@@ -336,7 +336,7 @@ Import-Csv out\ip-okved.csv | Select-Object okved, okvedName, registrationCity, 
 
 ```kotlin
 // build.gradle.kts
-implementation("io.github.validum-tech:validum-core:0.4.0")
+implementation("io.github.validum-tech:validum-core:0.4.1")
 ```
 - Увидишь: jar скачивается из Maven Central, `repositories { mavenCentral() }` уже есть.
 - Скажи: «`validum-core` — обычная библиотека из Central: без Spring, без сети, ноль
@@ -531,7 +531,7 @@ curl -s -w "`nHTTP %{http_code}`n" -X POST http://localhost:8080/api/v1/generate
 ## 4.1 Подключение
 
 ```kotlin
-testImplementation("io.github.validum-tech:validum-allure:0.4.0")
+testImplementation("io.github.validum-tech:validum-allure:0.4.1")
 testRuntimeOnly("io.qameta.allure:allure-junit5:2.35.3")   // ваша версия Allure
 ```
 - Скажи: «Расширение **не навязывает** версию Allure — зависит от `allure-java-commons`
@@ -579,7 +579,7 @@ validum-demo/
 │   ├── run.ps1                   ← сценарий из Видео 1 целиком
 │   └── specs/*.json              ← наборы как код
 ├── core/                         ← Видео 2
-│   ├── build.gradle.kts          ← validum-core:0.4.0
+│   ├── build.gradle.kts          ← validum-core:0.4.1
 │   └── src/test/java/DemoCoreTest.java
 ├── api/                          ← Видео 3
 │   ├── docker-compose.yml        ← REST-сервис одной командой

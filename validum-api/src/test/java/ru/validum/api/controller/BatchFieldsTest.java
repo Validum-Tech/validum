@@ -45,6 +45,20 @@ class BatchFieldsTest {
     assertThat(header).contains("secretWord").contains("terrorist").contains("asOf");
   }
 
+  @Test
+  @DisplayName("?fields= с json отбивается 400 — молча игнорировать нельзя")
+  void fieldsRequireCsv() throws Exception {
+    MvcResult result = mockMvc
+      .perform(
+        post("/api/v1/generate/individual/batch?format=json-array&fields=short")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("{\"count\":2,\"seed\":42}"))
+      .andExpect(status().isBadRequest())
+      .andReturn();
+    String body = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+    assertThat(body).contains("invalid_argument").contains("format=csv");
+  }
+
   /** REST-CSV отдаётся с BOM (как и файловый) — для сверки заголовка его снимаем. */
   private static String headerOf(String body) {
     return body.lines().findFirst().orElse("").replace("\uFEFF", "");

@@ -9,7 +9,7 @@ Spring Boot-сервис: batch-эндпоинты, fill, validate, scenarios, e
 | **REST API** | Автотесты (JUnit + REST Assured), Swagger UI | `docker compose up` → `POST /api/v1/generate/...` |
 | **CLI** | Скрипты сетапа, CI-пайплайны, «100 профилей в CSV» | `java -jar validum.jar generate individual --count 100 --format csv -o profiles.csv` |
 | **Allure Extension** | JUnit 5: attach профиля в Allure-отчёт | `@ValidumSeed(42)` / `@ValidumGenerate(...)` |
-| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.4.0</dependency>` (Maven Central) |
+| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.4.1</dependency>` (Maven Central) |
 
 ---
 
@@ -188,7 +188,7 @@ java -jar validum.jar coverage --file clients.csv
 ```
 
 ```
-# validum 0.4.0 coverage · file=clients.csv · rows=100
+# validum 0.4.1 coverage · file=clients.csv · rows=100
 
 поле               заполнено  различных  невалидных
 --------------------------------------------------
@@ -230,8 +230,9 @@ java -jar validum.jar generate individual --seed 42 -n 3 --format csv --fields s
 Название колонки проверяется: опечатка не уходит в пустой столбец, а падает с ошибкой
 «Неизвестные колонки: passport. В наборе есть, например: personId, fullName, …». Порядок колонок
 при явном списке — как у профиля, поэтому файл остаётся стабильным между прогонами. В спецификации
-то же поле называется `"fields"`, а в REST — параметр запроса `?fields=short` (пока для CSV-форматов
-батчей).
+то же поле называется `"fields"`, а в REST — параметр запроса `?fields=short` — только для `format=csv`
+и `csv-semicolon`: для `json`/`json-array` набор уже структурирован, и такой запрос честно отбивается
+`400 {"error":"invalid_argument"}` вместо тихого игнорирования.
 
 ### 🧭 Найти человека в наборе
 
