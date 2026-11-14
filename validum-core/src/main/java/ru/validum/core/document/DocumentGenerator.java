@@ -11,8 +11,9 @@ import ru.validum.core.random.DataGenerator;
  * Генератор документов, удостоверяющих личность.
  *
  * <p>Формат серии и номера — из нормативных актов о бланках, см. {@link DocumentType} и
- * {@code ПП РФ № 2267, № 298, № 789, № 356; приказы МВД № 365 и МО № 700}. Срок действия считается от даты выдачи; для паспорта
- * РФ и военного билета срок задаётся возрастом, поэтому {@code expirationDate} = {@code null}.
+ * {@code ПП РФ № 2267, № 298, № 789, № 356; приказы МВД № 365 и МО № 700}. Срок действия
+ * считается от даты выдачи. Паспорт РФ — исключение: его меняют по достижении 20 и 45 лет, поэтому
+ * {@code expirationDate} = дата ближайшего возрастного рубежа (после 45 — {@code null}).
  *
  * <p>Даты выдачи лежат в прошлом (до 9 лет назад) — документ может быть как свежим, так и
  * близким к замене.
@@ -123,6 +124,11 @@ public final class DocumentGenerator implements DataGenerator {
     Objects.requireNonNull(asOf, "asOf");
 
     LocalDate earliest = birthDate.plusYears(type.minAge());
+    if (type == DocumentType.PASSPORT_RF) {
+      // Паспорт РФ выдаётся в 14 лет и меняется в 20 и 45: дата выдачи не раньше
+      // последнего пройденного рубежа — иначе 60-летний получал бы паспорт «выдан в 30».
+      earliest = lastPassportMilestone(birthDate, asOf);
+    }
     Integer years = type.validityYears();
     if (years != null) {
       LocalDate notExpired = asOf.minusYears(years);
@@ -135,7 +141,7 @@ public final class DocumentGenerator implements DataGenerator {
     }
     long days = java.time.temporal.ChronoUnit.DAYS.between(earliest, asOf);
     LocalDate issueDate = earliest.plusDays(days == 0 ? 0L : random.nextInt((int) days + 1));
-    LocalDate expirationDate = years == null ? null : issueDate.plusYears(years);
+    LocalDate expirationDate = expiration(type, birthDate, issueDate);
     return new IdentityDocument(
       type,
       series(type),
@@ -144,6 +150,37 @@ public final class DocumentGenerator implements DataGenerator {
       issueDate,
       expirationDate,
       type.hasDepartmentCode() ? departmentCode(regionCode) : null);
+  }
+
+  /**
+   * Срок действия документа на дату выдачи.
+   *
+   * <p>Паспорт РФ меняют по достижении 20 и 45 лет — это не «5 лет», а возрастные рубежи; после 45
+   * лет он бессрочный, пока не утерян. Остальные виды с {@code validityYears == null} (военный
+   * билет, вид на жительство) действительно бессрочные.
+   */
+  /** Последний возрастной рубеж паспорта РФ (14, 20, 45), не позже даты расчёта. */
+  private LocalDate lastPassportMilestone(LocalDate birthDate, LocalDate asOf) {
+    LocalDate milestone = birthDate.plusYears(DocumentType.PASSPORT_RF.minAge());
+    for (int age : new int[] {20, 45}) {
+      LocalDate date = birthDate.plusYears(age);
+      if (!date.isAfter(asOf)) {
+        milestone = date;
+      }
+    }
+    return milestone;
+  }
+
+  private LocalDate expiration(DocumentType type, LocalDate birthDate, LocalDate issueDate) {
+    if (type == DocumentType.PASSPORT_RF) {
+      int issueAge = (int) java.time.temporal.ChronoUnit.YEARS.between(birthDate, issueDate);
+      if (issueAge < 20) {
+        return birthDate.plusYears(20);
+      }
+      return issueAge < 45 ? birthDate.plusYears(45) : null;
+    }
+    Integer years = type.validityYears();
+    return years == null ? null : issueDate.plusYears(years);
   }
 
   private String series(DocumentType type) {

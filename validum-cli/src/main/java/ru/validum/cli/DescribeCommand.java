@@ -21,7 +21,8 @@ import ru.validum.core.validation.SnilsValidator;
  */
 @Command(
   name = "describe",
-  description = "Карточка человека из набора: документы, адреса, банк и проверки")
+  description = "Карточка человека из набора: документы, адреса, банк и проверки",
+  mixinStandardHelpOptions = true)
 public final class DescribeCommand implements Callable<Integer> {
 
   @Option(names = "--file", required = true, paramLabel = "<csv|json>",
@@ -120,6 +121,7 @@ public final class DescribeCommand implements Callable<Integer> {
     line("Серия и номер", join(row.get("passportSeries"), row.get("passportNumber")));
     line("Кем выдан", row.get("passportIssuedBy"));
     line("Дата выдачи", row.get("passportIssueDate"));
+    line("Действителен до", row.get("passportExpirationDate"));
     line("Код подразделения", row.get("passportDepartmentCode"));
 
     List<IdentityDocument> documents = DocumentsCsv.parseInline(row.get("documents"));
@@ -135,12 +137,9 @@ public final class DescribeCommand implements Callable<Integer> {
     }
 
     section("Адреса");
-    line("Регистрация", row.get("registrationFormatted"),
-      row.get("registrationPostalCode") == null ? null : "индекс " + row.get("registrationPostalCode"));
-    line("Почтовый", row.get("postFormatted"),
-      row.get("postPostalCode") == null ? null : "индекс " + row.get("postPostalCode"));
-    line("Фактический", row.get("currentFormatted"),
-      row.get("currentPostalCode") == null ? null : "индекс " + row.get("currentPostalCode"));
+    line("Регистрация", row.get("registrationFormatted"), addressNote(row, "registration"));
+    line("Почтовый", row.get("postFormatted"), addressNote(row, "post"));
+    line("Фактический", row.get("currentFormatted"), addressNote(row, "current"));
 
     section("Банк и счёт");
     // bank.region() — это КОД субъекта ("45"), для человека он бесполезен: печатаем город.
@@ -181,6 +180,15 @@ public final class DescribeCommand implements Callable<Integer> {
 
   private static void line(String label, String value) {
     line(label, value, null);
+  }
+
+  /** «регион, индекс» — то, что видно в CSV отдельными колонками. */
+  private static String addressNote(Map<String, String> row, String prefix) {
+    String region = row.get(prefix + "Region");
+    String postal = row.get(prefix + "PostalCode");
+    if (region == null && postal == null) return null;
+    if (region == null) return "индекс " + postal;
+    return postal == null ? region : region + ", индекс " + postal;
   }
 
   private static void line(String label, String value, String note) {

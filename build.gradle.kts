@@ -68,6 +68,12 @@ subprojects {
                 "validum.bik.file",
                 file("src/test/resources/bik-sample.xml").absolutePath,
             )
+            // Обновление golden-эталонов только явным флагом: -Pvalidum.golden.update=true
+            // (или -Dvalidum.golden.update=true через system property проекта).
+            providers.gradleProperty("validum.golden.update").orNull
+                ?.let { systemProperty("validum.golden.update", it) }
+            providers.systemProperty("validum.golden.update").orNull
+                ?.let { systemProperty("validum.golden.update", it) }
         }
     }
 

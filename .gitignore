@@ -48,6 +48,9 @@ allure-results/
 
 # Ручные артефакты проверок (не в git)
 /scratch/
+
+# Артефакты demo-check / demo-audit (отчёты, выводы CLI) — не в git
+/out/
 /idx.csv
 /mil.csv
 /bad-*.json

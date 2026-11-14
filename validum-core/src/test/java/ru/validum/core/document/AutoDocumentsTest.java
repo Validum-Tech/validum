@@ -54,7 +54,8 @@ class AutoDocumentsTest {
       if (age < 14) {
         assertThat(types).as("до 14 лет: %s", age).isEmpty();
       } else {
-        assertThat(types).as("с 14 лет: %s", age).contains(DocumentType.PASSPORT_RF);
+        // Паспорт РФ — основной документ профиля, в списке ДУЛ он не дублируется.
+        assertThat(types).as("с 14 лет: %s", age).doesNotContain(DocumentType.PASSPORT_RF);
       }
       if (age >= 18) {
         assertThat(types).as("взрослый %s", age).contains(DocumentType.DRIVER_LICENSE);

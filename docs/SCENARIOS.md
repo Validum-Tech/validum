@@ -434,7 +434,7 @@ String csv = CsvExporter.toCsv(IndividualProfileFlattener.flattenAll(List.of(sbe
 | Мобильный / Email | `ContactGenerator` (email — из ФИО, P0.3) |
 | Секретное слово | 298 в `secret_words.txt` (P0.3) |
 | Категория / Пакет | Параметр / каскад |
-| Менеджер | 50 в `managers.txt` (P0.3) |
+| Менеджер | 1 заглушка в `managers.txt` (W49-4) |
 | **Банк (P3.3)** | **`BikGenerator` (случайный) или явный (`.bik` / `.bank`)** |
 | Счёт | `AccountGenerator` |
 | `terrorist` / `blocked` | Флаги (`false`) |
@@ -484,7 +484,7 @@ String csv = CsvExporter.toCsv(IndividualProfileFlattener.flattenAll(List.of(sbe
 | Адреса | `addresses/XX.tsv.gz` (КЛАДР) | 1,99 млн улиц | `region` |
 | Домены TEST/REALISTIC | `emails/*.txt` | 10 + 10 | — |
 | Секретные слова | `secret_words.txt` | 298 | `.secretWord(...)` |
-| Менеджеры | `managers.txt` | 50 | `.personalManager(...)` |
+| Менеджеры | `managers.txt` | 1 | `.personalManager(...)` |
 | **Банки** | **`BikRegistry` / ED807** | **30 / 370** | **`.bik` / `.bank` (P3.3)** |
 
 ### 5.6 Экспортные поля (CSV, плоский JSON CLI, Allure attachment)

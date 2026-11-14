@@ -34,7 +34,7 @@ class MyTest {
 }
 ```
 
-Полная инструкция — в [README.md](../README.md).
+Полная инструкция — в [README.md](../README.md) (лендинг) и [QUICKSTART.md](QUICKSTART.md).
 
 ---
 
@@ -44,23 +44,23 @@ class MyTest {
 
 | Что нужно | Куда |
 |---|---|
-| Что умеет Validum | [README.md](../README.md) → «Что уже работает» |
+| Что умеет Validum | [FEATURES.md](FEATURES.md) |
 | Готовые сценарии | [SCENARIOS.md](SCENARIOS.md) → раздел 2 |
 | Комбинирование параметров | [SCENARIOS.md](SCENARIOS.md) → раздел 3 |
-| Генерировать из скрипта | [README.md](../README.md) → «CLI (P3.1)» |
-| Attach профиля в Allure | [README.md](../README.md) → «Allure Extension (P3.2)» |
-| **Явный банк (`.bik`)** | **[README.md](../README.md) → «Явный выбор банка (P3.3)»** |
-| REST API | [README.md](../README.md) → «REST API» |
-| Проверка данных | [README.md](../README.md) → «Валидация» |
-| Встроить в Java-тесты | [README.md](../README.md) → «Java-библиотека» |
+| Генерировать из скрипта | [CLI.md](CLI.md) |
+| Attach профиля в Allure | [INTEGRATIONS.md](INTEGRATIONS.md) |
+| **Явный банк (`.bik`)** | **[CLI.md](CLI.md#-явный-выбор-банка-p33)** |
+| REST API | [REST.md](REST.md) |
+| Проверка данных | [CLI.md](CLI.md#-валидация-validation-api) |
+| Встроить в Java-тесты | [INTEGRATIONS.md](INTEGRATIONS.md) |
 
 ### 🛠 Разработчик — понимаю, как устроено
 
 | Что нужно | Куда |
 |---|---|
-| Архитектура | [README.md](../README.md) → «Архитектура» |
+| Архитектура | [PROJECT.md](PROJECT.md) |
 | Принципы проектирования | [SCENARIOS.md](SCENARIOS.md) → «Принципы проектирования» |
-| Соглашения по коду | [README.md](../README.md) → «Для контрибьюторов» |
+| Соглашения по коду | [PROJECT.md](PROJECT.md) |
 | План | [ROADMAP.md](ROADMAP.md) |
 | Данные (ФИО, адреса, email) | [SCENARIOS.md](SCENARIOS.md) → 5.5 |
 | Экспортные колонки | [SCENARIOS.md](SCENARIOS.md) → 5.6 |
@@ -70,18 +70,18 @@ class MyTest {
 
 | Что нужно | Куда |
 |---|---|
-| REST API | [README.md](../README.md) → «REST API» |
-| CLI для скриптов | [README.md](../README.md) → «CLI (P3.1)» |
-| Allure Extension | [README.md](../README.md) → «Allure Extension (P3.2)» |
-| Java-библиотека | [README.md](../README.md) → «Java-библиотека» |
-| Docker | [README.md](../README.md) → «Docker» |
+| REST API | [REST.md](REST.md) |
+| CLI для скриптов | [CLI.md](CLI.md) |
+| Allure Extension | [INTEGRATIONS.md](INTEGRATIONS.md) |
+| Java-библиотека | [INTEGRATIONS.md](INTEGRATIONS.md) |
+| Docker | [QUICKSTART.md](QUICKSTART.md) |
 | Maven Central | [ROADMAP.md](ROADMAP.md) → P1.1 (отложено) |
 
 ### 📊 Менеджер — статус и планы
 
 | Что нужно | Куда |
 |---|---|
-| Статус (тесты, покрытие) | [README.md](../README.md) → «Тесты» |
+| Статус (тесты, покрытие) | [QUICKSTART.md](QUICKSTART.md) |
 | Что закрыто / что осталось | [ROADMAP.md](ROADMAP.md) |
 | Метрики | [ROADMAP.md](ROADMAP.md) → «Метрики успеха» |
 
@@ -113,7 +113,13 @@ docs/
 | [recipes/README.md](recipes/README.md) | QA, интеграторы | 14 готовых сценариев: фикстуры, CSV/SQL, нерезиденты, ДУЛ, ED807/ED808, детерминизм, Docker |
 | [../CHANGELOG.md](../CHANGELOG.md) | Все | Что вошло в 0.1.0 |
 | `internal/HANDOFF.md` | Только автор | Локальный контекст сессии (в `.gitignore`) |
-| [../README.md](../README.md) | Все | Основная документация |
+| [../README.md](../README.md) | Все | Лендинг: что это, 30 секунд, цифры |
+| [QUICKSTART.md](QUICKSTART.md) | Все | Установка, сборка, тесты, Docker |
+| [CLI.md](CLI.md) | QA, интеграторы | Девять команд, пакеты, валидация, экспорт |
+| [REST.md](REST.md) | Разработчики | Эндпоинты, форматы, ошибки |
+| [INTEGRATIONS.md](INTEGRATIONS.md) | Java-разработчики | Библиотека и Allure |
+| [FEATURES.md](FEATURES.md) | Все | Зачем нужен и что работает |
+| [PROJECT.md](PROJECT.md) | Контрибьюторы | Архитектура, структура, релизы |
 | [reference/cbr/README.md](reference/cbr/README.md) | Все | Нормативная база УФЭБС ЦБ РФ v2026.09.0: PtType, форматы счёта/БИК/ИНН, ED-сообщения |
 | [reference/dul/research-dul-formats.md](reference/dul/research-dul-formats.md) | Все | ДУЛ: 15 видов документов, подтверждённые форматы и пробелы |
 

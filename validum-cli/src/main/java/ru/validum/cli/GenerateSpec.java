@@ -53,7 +53,8 @@ public record GenerateSpec(
     String dialect,
     String table,
     Boolean noDdl,
-    String corrupt) {
+    String corrupt,
+    String fields) {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -62,7 +63,7 @@ public record GenerateSpec(
     "noAccount", "region", "age", "ageRange", "ageDistribution", "gender", "bik",
     "okved", "organizationType",
     "organizationName", "documents", "documentsMode", "residency", "country", "dialect",
-    "table", "noDdl", "corrupt", "options");
+    "table", "noDdl", "corrupt", "fields", "options");
 
   /** Читает и валидирует спецификацию; ошибки — {@link IllegalArgumentException} с понятным текстом. */
   public static GenerateSpec load(Path file) {
@@ -152,7 +153,8 @@ public record GenerateSpec(
       text(merged, "dialect"),
       text(merged, "table"),
       bool(merged, "noDdl"),
-      joined(merged, "corrupt"));
+      joined(merged, "corrupt"),
+      text(merged, "fields"));
   }
 
   /** Строка или массив строк, склеенные через запятую (поле {@code corrupt}). */
@@ -175,7 +177,7 @@ public record GenerateSpec(
       type, count, seed, asOf, format, path.toString(), unique, terrorist, blocked, noAccount,
       region, age, ageRange, ageDistribution, gender, bik, okved, organizationType,
       organizationName, documents,
-      documentsMode, residency, country, dialect, table, noDdl, corrupt);
+      documentsMode, residency, country, dialect, table, noDdl, corrupt, fields);
   }
 
   /** Допускает русские и короткие синонимы: ФЛ/ИП/ЮЛ вместо громоздких английских. */

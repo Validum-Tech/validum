@@ -11,6 +11,7 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Mixin;
 import ru.validum.core.document.DocumentGenerator;
 import ru.validum.core.document.DocumentType;
 import ru.validum.core.document.IdentityDocument;
@@ -22,12 +23,12 @@ import ru.validum.core.document.IdentityDocument;
 )
 public final class GenerateDocumentsCommand implements Callable<Integer> {
 
+  @Mixin CommonOptions common = new CommonOptions();
+
   @Option(names = "--type", required = true,
     description = "Виды документов: коды СПДУЛ (21,22,12) или имена (PASSPORT_RF,FOREIGN_PASSPORT)")
   String type;
 
-  @Option(names = "--seed", description = "Базовый seed (по умолчанию — System.nanoTime())")
-  Long seed;
 
   @Option(
     names = "--as-of",
@@ -35,30 +36,22 @@ public final class GenerateDocumentsCommand implements Callable<Integer> {
       + "от неё. Не задана — сегодня")
   String asOf;
 
-  @Option(names = {"-n", "--count"}, defaultValue = "1",
-    description = "Сколько наборов сгенерировать (1–10000, по умолчанию 1)")
-  int count;
-
-  @Option(names = "--format", defaultValue = "json",
-    description = "Формат: json | json-array | csv | csv-semicolon (русский Excel) | sql")
-  String format;
-
-  @Option(names = "--dialect", description = "SQL-диалект: postgres | oracle | mysql")
-  String dialect = "postgres";
-
-  @Option(names = "--table", description = "Имя таблицы для --format sql")
-  String table = "validum_documents";
-
-  @Option(names = "--no-ddl", description = "Без CREATE TABLE, только INSERT")
-  boolean noDdl;
 
 
-  @Option(names = {"-o", "--output"}, description = "Путь к файлу (по умолчанию stdout)")
-  Path output;
+
+
+
+
+
+  private String tableName() {
+    return common.table != null && !common.table.isBlank()
+      ? common.table
+      : "validum_documents";
+  }
 
   @Override
   public Integer call() throws Exception {
-    if (count < 1 || count > 10_000) {
+    if (common.count < 1 || common.count > 10_000) {
       System.err.println("Ошибка: --count должен быть в диапазоне 1..10000");
       return 2;
     }
@@ -70,7 +63,7 @@ public final class GenerateDocumentsCommand implements Callable<Integer> {
       return 2;
     }
 
-    long baseSeed = seed != null ? seed : System.nanoTime();
+    long baseSeed = common.seed != null ? common.seed : System.nanoTime();
     LocalDate asOfDate;
     try {
       asOfDate = AsOfOption.parse(asOf);
@@ -80,15 +73,16 @@ public final class GenerateDocumentsCommand implements Callable<Integer> {
     }
     DocumentGenerator generator = new DocumentGenerator(new Random(baseSeed));
 
-    List<Map<String, String>> rows = new ArrayList<>(count * types.size());
-    for (int i = 0; i < count; i++) {
+    List<Map<String, String>> rows = new ArrayList<>(common.count * types.size());
+    for (int i = 0; i < common.count; i++) {
       for (DocumentType documentType : types) {
         rows.add(row(asOfDate == null ? generator.generate(documentType) : generator.generate(documentType, asOfDate)));
       }
     }
 
-    OutputMeta.print(System.err, baseSeed, asOfDate, seed == null);
-    OutputWriter.of(output, OutputFormat.fromString(format), dialect, table, !noDdl)
+    OutputMeta.print(System.err, baseSeed, asOfDate, common.seed == null);
+    OutputWriter.of(
+      common.output, OutputFormat.fromString(common.format), common.dialect, tableName(), !common.noDdl)
       .write(rows, baseSeed);
     return 0;
   }

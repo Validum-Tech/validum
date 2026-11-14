@@ -108,7 +108,8 @@ public final class DocumentRules {
     if (age < DocumentType.PASSPORT_RF.minAge()) {
       return List.of();
     }
-    types.add(DocumentType.PASSPORT_RF);
+    // Паспорт РФ сюда НЕ добавляется: он уже есть в профиле как основной документ
+    // (IndividualProfile.passport), и второй такой же в списке ДУЛ — дубль.
     if (age >= ADULT_AGE) {
       types.add(DocumentType.DRIVER_LICENSE);
       if (gender == Gender.MALE && age <= MILITARY_MAX_AGE) {

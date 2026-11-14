@@ -13,6 +13,7 @@ import ru.validum.core.bank.BikSource;
 import ru.validum.core.bank.BikSources;
 import ru.validum.core.name.Gender;
 import ru.validum.core.profile.IndividualProfile;
+import ru.validum.core.profile.IndividualProfileBuilder;
 import ru.validum.core.profile.IndividualProfileGenerator;
 
 /**
@@ -84,7 +85,7 @@ public final class CsvFiller {
 
   /** Заполняет одну строку. */
   public Map<String, String> fillRow(Map<String, String> row) {
-    IndividualProfileGenerator.Builder builder =
+    IndividualProfileBuilder builder =
       IndividualProfileGenerator.builder().bikSource(bikSource);
     if (random != null) {
       builder.random(random);

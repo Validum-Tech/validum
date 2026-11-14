@@ -6,7 +6,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -78,7 +77,7 @@ public final class OutputWriter {
       }
       out.flush();
     } else {
-      Files.write(outputPath, bytes);
+      OutputFiles.write(outputPath, bytes);
       System.err.println("Записано в файл: " + outputPath.toAbsolutePath());
     }
   }

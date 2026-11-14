@@ -121,6 +121,7 @@ public final class ProfileFromCsv {
     String number = row.get("passportNumber");
     String issuedBy = row.get("passportIssuedBy");
     String issueDate = row.get("passportIssueDate");
+    String expirationDate = row.get("passportExpirationDate");
     String departmentCode = row.get("passportDepartmentCode");
     String type = row.get("passportType");
     String country = row.get("passportCountry");
@@ -142,7 +143,7 @@ public final class ProfileFromCsv {
       number,
       issuedBy,
       date(issueDate),
-      null, // срок действия в CSV-контракт не входит
+      date(expirationDate),
       departmentCode,
       null, // статус паспорта в CSV-контракт не входит
       passportType(type),
@@ -189,7 +190,7 @@ public final class ProfileFromCsv {
       false, // isDefault
       Country.RU,
       row.get(prefix + "PostalCode"),
-      null, null, // region, regionType
+      row.get(prefix + "Region"), row.get(prefix + "RegionType"),
       null, null, // district, districtType
       row.get(prefix + "City"), null, // city, cityType
       null, null, // locality, localityType

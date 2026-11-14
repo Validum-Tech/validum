@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Mixin;
+import ru.validum.core.export.FieldSelection;
 import ru.validum.core.common.OrganizationType;
 import ru.validum.core.common.Region;
 import ru.validum.core.export.OrganizationProfileFlattener;
@@ -21,17 +23,21 @@ import ru.validum.core.organization.OrganizationProfileGenerator;
 )
 public final class GenerateOrganizationCommand implements Callable<Integer> {
 
-  @Option(names = "--seed", description = "Базовый seed")
-  Long seed;
+  @Mixin CommonOptions common = new CommonOptions();
 
-  @Option(names = {"-n", "--count"}, defaultValue = "1", description = "Количество (1–10000)")
-  int count;
+
 
   @Option(names = "--type", description = "ОПФ: LLC | JSC | PJSC | NCO | FOUNDATION | SE | ME")
   String type;
 
   @Option(names = "--name", description = "Явное наименование (иначе — генерируется)")
   String name;
+
+  @Option(
+    names = "--fields",
+    paramLabel = "<колонки>",
+    description = "Оставить только эти колонки (через запятую) или пресет short")
+  String fields;
 
   @Option(names = "--region", description = "Регион: имя (MOSCOW, SPB, …) или код субъекта (77)")
   String region;
@@ -46,22 +52,11 @@ public final class GenerateOrganizationCommand implements Callable<Integer> {
     description = "БИК банка компании (9 цифр). Иначе — случайный из справочника")
   String bankBik;
 
-  @Option(names = "--format", defaultValue = "json",
-    description = "json | json-array | csv | csv-semicolon (русский Excel) | sql")
-  String format;
-
-  @Option(names = "--dialect", description = "SQL-диалект: postgres | oracle | mysql")
-  String dialect = "postgres";
-
-  @Option(names = "--table", description = "Имя таблицы для --format sql")
-  String table = "validum_organization";
-
-  @Option(names = "--no-ddl", description = "Без CREATE TABLE, только INSERT")
-  boolean noDdl;
 
 
-  @Option(names = {"-o", "--output"}, description = "Путь к файлу")
-  Path output;
+
+
+
 
   @Option(names = "--terrorist") boolean terrorist;
   @Option(names = "--blocked") boolean blocked;
@@ -70,17 +65,23 @@ public final class GenerateOrganizationCommand implements Callable<Integer> {
     description = "Без повторов ОГРН в наборе (требует --seed); при исчерпании вариантов — exit 2")
   boolean unique;
 
+  private String tableName() {
+    return common.table != null && !common.table.isBlank()
+      ? common.table
+      : "validum_organization";
+  }
+
   @Override
   public Integer call() throws Exception {
-    if (count < 1 || count > 10_000) {
+    if (common.count < 1 || common.count > 10_000) {
       System.err.println("Ошибка: --count должен быть в диапазоне 1..10000");
       return 2;
     }
-    if (unique && seed == null) {
+    if (unique && common.seed == null) {
       System.err.println("Ошибка: --unique требует --seed, иначе набор невоспроизводим");
       return 2;
     }
-    long baseSeed = seed != null ? seed : System.nanoTime();
+    long baseSeed = common.seed != null ? common.seed : System.nanoTime();
     Region regionValue;
     try {
       regionValue = region != null ? RegionOption.parse(region) : null;
@@ -89,10 +90,10 @@ public final class GenerateOrganizationCommand implements Callable<Integer> {
       return 2;
     }
 
-    List<OrganizationProfile> profiles = new ArrayList<>(count);
+    List<OrganizationProfile> profiles = new ArrayList<>(common.count);
     UniqueGuard guard = unique ? new UniqueGuard("ОГРН", 10_000_000_000_000L) : null;
     try {
-      for (int i = 0; i < count; i++) {
+      for (int i = 0; i < common.count; i++) {
         long profileSeed = baseSeed + i;
         profiles.add(guard == null
           ? generateOne(profileSeed, regionValue)
@@ -103,10 +104,11 @@ public final class GenerateOrganizationCommand implements Callable<Integer> {
       return 2;
     }
 
-    List<Map<String, String>> rows = OrganizationProfileFlattener.flattenAll(profiles);
-    OutputFormat fmt = OutputFormat.fromString(format);
-    OutputMeta.print(System.err, baseSeed, null, seed == null);
-    OutputWriter.of(output, fmt, dialect, table, !noDdl).write(rows, baseSeed);
+    List<Map<String, String>> rows =
+      FieldSelection.keep(OrganizationProfileFlattener.flattenAll(profiles), fields);
+    OutputFormat fmt = OutputFormat.fromString(common.format);
+    OutputMeta.print(System.err, baseSeed, null, common.seed == null);
+    OutputWriter.of(common.output, fmt, common.dialect, tableName(), !common.noDdl).write(rows, baseSeed);
     return 0;
   }
 
