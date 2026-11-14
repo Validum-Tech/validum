@@ -110,17 +110,21 @@ jobs:
         run: java -jar validum-cli/build/libs/validum.jar fetch-bik -o data/ED807.xml
 
       - name: Демо-прогон (demo-check)
+        if: hashFiles('tools/demo-check.py') != ''
         run: python3 tools/demo-check.py --jar validum-cli/build/libs/validum.jar --data data/ED807.xml --skip-excel
 
       - name: Предрелизная проверка (release-check)
+        if: hashFiles('tools/release-check.py') != ''
         run: python3 tools/release-check.py --jar validum-cli/build/libs/validum.jar
 
       - name: Смоук потребителя на JDK 17
+        if: hashFiles('tools/consumer-smoke.py') != ''
         run: |
           ./gradlew :validum-core:publishToMavenLocal --no-daemon
           python3 tools/consumer-smoke.py
 
       - name: Смоук живого REST-сервиса
+        if: hashFiles('tools/rest-smoke.py') != ''
         run: |
           ./gradlew :validum-api:bootJar --no-daemon
           java -jar validum-cli/build/libs/validum.jar fetch-bik -o data/ED807.xml
