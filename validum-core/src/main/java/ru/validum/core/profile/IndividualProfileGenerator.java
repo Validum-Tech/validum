@@ -73,6 +73,7 @@ import ru.validum.core.snils.SnilsGenerator;
 public final class IndividualProfileGenerator implements DataGenerator {
 
   private static final int DEFAULT_AGE = 19;
+  private static final int MAX_AGE = 110;
   private static final int ADULT_AGE = 18;
 
   private static final List<String> SECRET_WORDS = loadLines("/secret_words.txt");
@@ -128,7 +129,11 @@ public final class IndividualProfileGenerator implements DataGenerator {
   private final AccountGenerator accountGen;
   private final DocumentGenerator documentGen;
 
-  private IndividualProfileGenerator(Builder b) {
+  /**
+   * Виден пакету: билдер в том же пакете создаёт генератор через {@code build()}.
+   * Наружу генератор собирается только через {@link #builder()}.
+   */
+  IndividualProfileGenerator(IndividualProfileBuilder b) {
     this.random = b.random;
     this.bikSource = b.bikSource;
     this.addressStrategy = b.addressStrategy;
@@ -173,8 +178,8 @@ public final class IndividualProfileGenerator implements DataGenerator {
     this.documentGen = new DocumentGenerator(random);
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public static IndividualProfileBuilder builder() {
+    return new IndividualProfileBuilder();
   }
 
   public static IndividualProfileGenerator defaults() {
@@ -310,14 +315,16 @@ public final class IndividualProfileGenerator implements DataGenerator {
     if (age != null) {
       return age;
     }
-    if (ageMin == null) {
+    if (ageMin == null && ageDistribution != AgeDistribution.REALISTIC) {
       return DEFAULT_AGE;
     }
-    return ageDistribution == AgeDistribution.REALISTIC ? realisticAge() : uniformAge();
+    int low = ageMin == null ? 0 : ageMin;
+    int high = ageMax == null ? MAX_AGE : ageMax;
+    return ageDistribution == AgeDistribution.REALISTIC ? realisticAge(low, high) : uniformAge(low, high);
   }
 
-  private int uniformAge() {
-    return ageMin + random.nextInt(ageMax - ageMin + 1);
+  private int uniformAge(int low, int high) {
+    return low + random.nextInt(high - low + 1);
   }
 
   /** Когорты «реалистичного» распределения: {от, до, вес в процентах}. */
@@ -326,21 +333,21 @@ public final class IndividualProfileGenerator implements DataGenerator {
     {35, 44, 17}, {45, 54, 14}, {55, 64, 13}, {65, 79, 8}, {80, 110, 2},
   };
 
-  private int realisticAge() {
+  private int realisticAge(int floor, int ceiling) {
     int roll = random.nextInt(100);
     int accumulated = 0;
     for (int[] cohort : AGE_COHORTS) {
       accumulated += cohort[2];
       if (roll < accumulated) {
-        int low = Math.max(cohort[0], ageMin);
-        int high = Math.min(cohort[1], ageMax);
+        int low = Math.max(cohort[0], floor);
+        int high = Math.min(cohort[1], ceiling);
         if (low <= high) {
           return low + random.nextInt(high - low + 1);
         }
         break;
       }
     }
-    return uniformAge();
+    return uniformAge(floor, ceiling);
   }
 
   /**
@@ -478,251 +485,6 @@ public final class IndividualProfileGenerator implements DataGenerator {
       }
     } catch (IOException e) {
       throw new UncheckedIOException("Failed to load " + resource, e);
-    }
-  }
-
-  /** Builder с дефолтами и каскадной логикой. */
-  public static final class Builder {
-
-    private Random random = DataGenerator.defaultRandom();
-    private Long seedValue;
-    private BikSource bikSource = BikSources.defaultSource();
-    private AddressStrategy addressStrategy = AddressStrategy.SAME_FOR_ALL;
-    private FiasMode fiasMode = FiasMode.FULL;
-    private Gender gender;
-    private Integer age;
-    private Integer ageMin;
-    private Integer ageMax;
-    private AgeDistribution ageDistribution = AgeDistribution.UNIFORM;
-    private boolean withAccount = true;
-    private Boolean passportWasExchanged;
-    private PassportType passportType = PassportType.RF;
-    private Country passportCountry;
-    private FioScript fioScript = FioScript.CYRILLIC;
-    private Set<CorruptField> corruptFields = Set.of();
-    private Residency residency = Residency.residentRU();
-    private String categoryClient = AbsDefaults.CATEGORY_CLIENT;
-    private String accountPackage;
-    private FamilyStatus familyStatus;
-    private Region region;
-    private String secretWord;
-    private String personalManager;
-    private String email;
-    private EmailDomainMode emailDomainMode = EmailDomainMode.TEST;
-    private boolean terrorist = false;
-    private boolean blocked = false;
-    private String bik;
-    private Bank explicitBank;
-    private List<DocumentType> documentTypes = List.of();
-    private boolean autoDocuments;
-    private LocalDate asOf;
-
-    private Builder() {}
-
-    public Builder seed(long seed) {
-      this.random = DataGenerator.seededRandom(seed);
-      this.seedValue = seed;
-      return this;
-    }
-
-    public Builder random(Random random) {
-      this.random = random;
-      return this;
-    }
-
-    /**
-     * Дата расчёта профиля: возраст, даты выдачи паспорта и документов считаются от неё.
-     *
-     * <p>Нужна для воспроизводимости: при одном и том же seed и {@code asOf} профиль одинаков в
-     * любой день. Не задана — используется сегодняшняя дата.
-     */
-    public Builder asOf(LocalDate date) {
-      this.asOf = date;
-      return this;
-    }
-
-    public Builder bikSource(BikSource source) {
-      this.bikSource = source;
-      return this;
-    }
-
-    /**
-     * Явный БИК (9 цифр). Банк ищется в текущем {@link BikSource}.
-     *
-     * @throws IllegalArgumentException при генерации, если БИК не найден
-     */
-    public Builder bik(String bik) {
-      this.bik = bik;
-      return this;
-    }
-
-    /**
-     * Готовый объект {@link Bank} (например, из {@link BikSource#findByBik(String)}).
-     *
-     * <p>Приоритет выше, чем у {@link #bik(String)} — если заданы оба, используется этот.
-     */
-    public Builder bank(Bank bank) {
-      this.explicitBank = bank;
-      return this;
-    }
-
-    public Builder addressStrategy(AddressStrategy strategy) {
-      this.addressStrategy = strategy;
-      return this;
-    }
-
-    public Builder fiasMode(FiasMode mode) {
-      this.fiasMode = mode;
-      return this;
-    }
-
-    public Builder gender(Gender gender) {
-      this.gender = gender;
-      return this;
-    }
-
-    public Builder age(int age) {
-      this.age = age;
-      return this;
-    }
-
-    /**
-     * Диапазон возраста {@code MIN-MAX}; при {@code --unique} каждый профиль берёт своё значение.
-     * С {@link #age(int)} явный возраст важнее диапазона.
-     */
-    public Builder ageRange(int min, int max) {
-      if (min < 0 || max > 110 || min > max) {
-        throw new IllegalArgumentException(
-          "Возрастной диапазон должен быть 0-110 и не перевёрнут, получено: " + min + "-" + max);
-      }
-      this.ageMin = min;
-      this.ageMax = max;
-      return this;
-    }
-
-    /** Распределение внутри {@link #ageRange(int, int)}; по умолчанию {@link AgeDistribution#UNIFORM}. */
-    public Builder ageDistribution(AgeDistribution distribution) {
-      this.ageDistribution = distribution == null ? AgeDistribution.UNIFORM : distribution;
-      return this;
-    }
-
-    public Builder withAccount(boolean withAccount) {
-      this.withAccount = withAccount;
-      return this;
-    }
-
-    public Builder passportWasExchanged(boolean exchanged) {
-      this.passportWasExchanged = exchanged;
-      return this;
-    }
-
-    public Builder passportType(PassportType type) {
-      this.passportType = type;
-      return this;
-    }
-
-    public Builder passportCountry(Country country) {
-      this.passportCountry = country;
-      return this;
-    }
-
-    public Builder fioScript(FioScript script) {
-      this.fioScript = script;
-      return this;
-    }
-
-    public Builder corrupt(CorruptField... fields) {
-      this.corruptFields =
-        (fields == null || fields.length == 0) ? Set.of() : Set.copyOf(Arrays.asList(fields));
-      return this;
-    }
-
-    public Builder residency(Residency residency) {
-      this.residency = residency;
-      return this;
-    }
-
-    public Builder categoryClient(String category) {
-      this.categoryClient = category;
-      return this;
-    }
-
-    public Builder accountPackage(String pack) {
-      this.accountPackage = pack;
-      return this;
-    }
-
-    public Builder familyStatus(FamilyStatus status) {
-      this.familyStatus = status;
-      return this;
-    }
-
-    public Builder region(Region region) {
-      this.region = region;
-      return this;
-    }
-
-    public Builder secretWord(String word) {
-      this.secretWord = word;
-      return this;
-    }
-
-    public Builder personalManager(String manager) {
-      this.personalManager = manager;
-      return this;
-    }
-
-    /** Явный email. Переопределяет генерацию по ФИО и режиму домена. */
-    public Builder email(String email) {
-      this.email = email;
-      return this;
-    }
-
-    /** Режим домена для сгенерированного email (TEST / REALISTIC / MIXED). */
-    public Builder emailDomainMode(EmailDomainMode mode) {
-      this.emailDomainMode = mode;
-      return this;
-    }
-
-    /** Флаг «террорист / экстремист» — для тестов, на которых АБС должна реагировать особым образом. */
-    public Builder terrorist(boolean terrorist) {
-      this.terrorist = terrorist;
-      return this;
-    }
-
-    /** Флаг «заблокирован банком» — для тестов операций, которые должны быть запрещены. */
-    public Builder blocked(boolean blocked) {
-      this.blocked = blocked;
-      return this;
-    }
-
-    /**
-     * Дополнительные документы, удостоверяющие личность (СПДУЛ ФНС).
-     *
-     * <p>Набор проверяется по правилам {@link DocumentRules}: загранпаспорт требует паспорт РФ,
-     * ВНЖ/РВП/беженец — только нерезиденту, военный билет — мужчине призывного возраста.
-     *
-     * @throws IllegalArgumentException при генерации, если набор противоречив
-     */
-    public Builder documents(DocumentType... types) {
-      this.documentTypes = (types == null || types.length == 0) ? List.of() : List.of(types);
-      return this;
-    }
-
-    /** Дополнительные документы из готового списка. */
-    /** Набор ДУЛ подобрать автоматически по возрасту, полу и резидентству ({@code --documents auto}). */
-    public Builder documentsAuto() {
-      this.autoDocuments = true;
-      return this;
-    }
-
-    public Builder documents(List<DocumentType> types) {
-      this.documentTypes = (types == null) ? List.of() : List.copyOf(types);
-      return this;
-    }
-
-    public IndividualProfileGenerator build() {
-      return new IndividualProfileGenerator(this);
     }
   }
 }

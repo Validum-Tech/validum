@@ -42,6 +42,9 @@ public final class UniqueGuard {
    * @param keyOf функция, достающая ключевое поле
    */
   public <T> T next(long profileSeed, LongFunction<T> generator, Function<T, String> keyOf) {
+    if (seen.size() >= capacity) {
+      throw poolExhausted();
+    }
     for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       T value = generator.apply(profileSeed + attempt * SEED_STEP);
       String key = keyOf.apply(value);
@@ -52,7 +55,19 @@ public final class UniqueGuard {
         return value;
       }
     }
-    throw new IllegalArgumentException(
+    throw exhausted();
+  }
+
+  /** Пул исчерпан заранее: все варианты уже выданы, дальше пробовать бессмысленно. */
+  private IllegalArgumentException poolExhausted() {
+    return new IllegalArgumentException(
+      "пул исчерпан: выдано " + seen.size() + " из " + capacity + " вариантов " + field
+        + "; увеличьте --unique-pool или уменьшите -n");
+  }
+
+  /** Не повезло за отведённое число попыток. */
+  private IllegalArgumentException exhausted() {
+    return new IllegalArgumentException(
       "не удалось получить уникальный " + field + " за " + MAX_ATTEMPTS + " попыток из "
         + capacity + " вариантов");
   }

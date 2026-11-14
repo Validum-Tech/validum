@@ -38,7 +38,9 @@ class ProfileFlattenersTest {
         "fullName", "gender", "birthDate", "age", "familyStatus",
         "inn", "snils",
         "passportSeries", "passportNumber", "passportIssuedBy",
-        "passportIssueDate", "passportDepartmentCode", "passportType", "passportCountry",
+        "passportIssueDate", "passportExpirationDate",
+        "passportDepartmentCode", "passportType", "passportCountry",
+        "registrationRegion", "registrationRegionType",
         "registrationPostalCode", "registrationCity", "registrationStreet",
         "registrationBuilding", "registrationApartment", "registrationFormatted",
         "postCity", "currentCity",
@@ -49,6 +51,31 @@ class ProfileFlattenersTest {
         "bankBik", "bankName", "bankCorrAccount", "bankCity", "bankRegion",
         "account"
       );
+    }
+
+    @Test
+    @DisplayName("Регион адреса виден в плоской выдаче — по CSV его нельзя было сверить")
+    void addressRegionIsPresent() {
+      IndividualProfile p =
+        IndividualProfileGenerator.builder().seed(SEED).region(Region.MOSCOW).build().generate();
+      Map<String, String> row = IndividualProfileFlattener.flatten(p);
+
+      assertThat(row.get("registrationRegion")).isEqualTo(Region.MOSCOW.regionName());
+      assertThat(row.get("postRegion")).isEqualTo(Region.MOSCOW.regionName());
+      assertThat(row.get("currentRegion")).isEqualTo(Region.MOSCOW.regionName());
+      assertThat(row.get("registrationRegionType")).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("Срок паспорта попадает в строку: без него describe печатал пусто")
+    void passportExpirationIsPresent() {
+      IndividualProfile p =
+        IndividualProfileGenerator.builder().seed(SEED).age(25).build().generate();
+      Map<String, String> row = IndividualProfileFlattener.flatten(p);
+
+      assertThat(row.get("passportExpirationDate"))
+        .as("у 25-летнего паспорт действует до 45-летия")
+        .matches("\\d{4}-\\d{2}-\\d{2}");
     }
 
     @Test

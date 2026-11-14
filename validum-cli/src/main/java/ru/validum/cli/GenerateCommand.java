@@ -73,11 +73,11 @@ public final class GenerateCommand implements Callable<Integer> {
 
   private GenerateIndividualCommand individual(GenerateSpec s) {
     GenerateIndividualCommand command = new GenerateIndividualCommand();
-    command.count = count(s);
-    command.seed = s.seed();
+    command.common.count = count(s);
+    command.common.seed = s.seed();
     command.asOf = s.asOf();
-    command.format = format(s);
-    command.output = path(s);
+    command.common.format = format(s);
+    command.common.output = path(s);
     command.unique = Boolean.TRUE.equals(s.unique());
     command.terrorist = Boolean.TRUE.equals(s.terrorist());
     command.blocked = Boolean.TRUE.equals(s.blocked());
@@ -93,19 +93,20 @@ public final class GenerateCommand implements Callable<Integer> {
     command.documentsMode = s.documentsMode() == null ? "inline" : s.documentsMode();
     command.residency = s.residency() == null ? "resident" : s.residency();
     command.country = s.country();
-    command.dialect = s.dialect() == null ? "postgres" : s.dialect();
-    command.table = s.table() == null ? "validum_individual" : s.table();
-    command.noDdl = Boolean.TRUE.equals(s.noDdl());
+    command.common.dialect = s.dialect() == null ? "postgres" : s.dialect();
+    command.common.table = s.table() == null ? "validum_individual" : s.table();
+    command.common.noDdl = Boolean.TRUE.equals(s.noDdl());
+    command.fields = s.fields();
     return command;
   }
 
   private GenerateIpCommand ip(GenerateSpec s) {
     GenerateIpCommand command = new GenerateIpCommand();
-    command.count = count(s);
-    command.seed = s.seed();
+    command.common.count = count(s);
+    command.common.seed = s.seed();
     command.asOf = s.asOf();
-    command.format = format(s);
-    command.output = path(s);
+    command.common.format = format(s);
+    command.common.output = path(s);
     command.unique = Boolean.TRUE.equals(s.unique());
     command.terrorist = Boolean.TRUE.equals(s.terrorist());
     command.blocked = Boolean.TRUE.equals(s.blocked());
@@ -116,18 +117,19 @@ public final class GenerateCommand implements Callable<Integer> {
     command.gender = s.gender();
     command.bik = s.bik();
     command.okved = s.okved();
-    command.dialect = s.dialect() == null ? "postgres" : s.dialect();
-    command.table = s.table() == null ? "validum_ip" : s.table();
-    command.noDdl = Boolean.TRUE.equals(s.noDdl());
+    command.common.dialect = s.dialect() == null ? "postgres" : s.dialect();
+    command.common.table = s.table() == null ? "validum_ip" : s.table();
+    command.common.noDdl = Boolean.TRUE.equals(s.noDdl());
+    command.fields = s.fields();
     return command;
   }
 
   private GenerateOrganizationCommand organization(GenerateSpec s) {
     GenerateOrganizationCommand command = new GenerateOrganizationCommand();
-    command.count = count(s);
-    command.seed = s.seed();
-    command.format = format(s);
-    command.output = path(s);
+    command.common.count = count(s);
+    command.common.seed = s.seed();
+    command.common.format = format(s);
+    command.common.output = path(s);
     command.unique = Boolean.TRUE.equals(s.unique());
     command.terrorist = Boolean.TRUE.equals(s.terrorist());
     command.blocked = Boolean.TRUE.equals(s.blocked());
@@ -136,9 +138,10 @@ public final class GenerateCommand implements Callable<Integer> {
     command.region = s.region();
     command.okved = s.okved();
     command.bankBik = s.bik();
-    command.dialect = s.dialect() == null ? "postgres" : s.dialect();
-    command.table = s.table() == null ? "validum_organization" : s.table();
-    command.noDdl = Boolean.TRUE.equals(s.noDdl());
+    command.common.dialect = s.dialect() == null ? "postgres" : s.dialect();
+    command.common.table = s.table() == null ? "validum_organization" : s.table();
+    command.fields = s.fields();
+    command.common.noDdl = Boolean.TRUE.equals(s.noDdl());
     return command;
   }
 
@@ -149,14 +152,14 @@ public final class GenerateCommand implements Callable<Integer> {
     }
     GenerateDocumentsCommand command = new GenerateDocumentsCommand();
     command.type = s.documents();
-    command.count = count(s);
-    command.seed = s.seed();
+    command.common.count = count(s);
+    command.common.seed = s.seed();
     command.asOf = s.asOf();
-    command.format = format(s);
-    command.output = path(s);
-    command.dialect = s.dialect() == null ? "postgres" : s.dialect();
-    command.table = s.table() == null ? "validum_documents" : s.table();
-    command.noDdl = Boolean.TRUE.equals(s.noDdl());
+    command.common.format = format(s);
+    command.common.output = path(s);
+    command.common.dialect = s.dialect() == null ? "postgres" : s.dialect();
+    command.common.table = s.table() == null ? "validum_documents" : s.table();
+    command.common.noDdl = Boolean.TRUE.equals(s.noDdl());
     return command;
   }
 

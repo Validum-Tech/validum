@@ -62,7 +62,7 @@ class CoverageCommandTest {
     String out = run("coverage", "--file", csv.toString());
 
     assertThat(out).contains("rows=1");
-    assertThat(out).contains("Согласованность: нарушений нет");
+    assertThat(out).contains("Согласованность набора").contains("нарушений нет");
     // Обёртка ="…" снята: ИНН проверяется и валиден, в колонке «невалидных» — 0.
     assertThat(out).containsPattern("inn\\s+100% \\(1/1\\)\\s+1\\s+0");
   }
@@ -86,9 +86,10 @@ class CoverageCommandTest {
     String out = run("coverage", "--file", csv.toString());
 
     // Главное: русские заголовки переведены в ключи, поля реально проверены.
-    assertThat(out).contains("Согласованность: нарушений нет");
+    assertThat(out).contains("Согласованность набора").contains("нарушений нет");
     assertThat(out).containsPattern("inn\\s+100% \\(1/1\\)\\s+1\\s+0");
     assertThat(out).containsPattern("snils\\s+100% \\(1/1\\)\\s+1\\s+0");
+    assertThat(out).contains("Валидность значений: проверено");
     assertThat(out).contains("Распределения");
   }
 

@@ -183,7 +183,13 @@ public final class Consistency {
     if (region == null) {
       return;
     }
-    if (!registrationRegion.trim().equals(region.regionName())) {
+    // Имя региона в КЛАДР и в Region может отличаться суффиксом («Московская» / «Московская
+    // область»), поэтому сравниваем через справочник, а не строкой.
+    Region declared = Region.byNameOrCode(registrationRegion.trim());
+    boolean sameRegion = declared != null
+      ? declared == region
+      : registrationRegion.trim().equals(region.regionName());
+    if (!sameRegion) {
       found.add(new Violation(
         rowNumber, "серия/регион прописки",
         "серия " + series + " (" + region.regionName() + "), прописка — " + registrationRegion));

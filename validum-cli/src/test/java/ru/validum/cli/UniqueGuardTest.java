@@ -24,7 +24,7 @@ class UniqueGuardTest {
   }
 
   @Test
-  @DisplayName("Пул исчерпан → IllegalArgumentException с попытками и ёмкостью")
+  @DisplayName("Пул исчерпан → быстрый отказ с размером пула")
   void exhaustedPool() {
     UniqueGuard guard = new UniqueGuard("ИНН", 1);
 
@@ -33,9 +33,9 @@ class UniqueGuardTest {
 
     assertThatThrownBy(() -> guard.next(1L, seed -> "always", s -> s))
       .isInstanceOf(IllegalArgumentException.class)
-      .hasMessageContaining("уникальный ИНН")
-      .hasMessageContaining("1000 попыток")
-      .hasMessageContaining("из 1 вариантов");
+      .hasMessageContaining("пул исчерпан")
+      .hasMessageContaining("выдано 1 из 1 вариантов ИНН")
+      .hasMessageContaining("--unique-pool");
   }
 
   @Test

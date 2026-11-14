@@ -20,6 +20,7 @@ import ru.validum.core.organization.OrganizationProfileGenerator;
 import ru.validum.core.passport.PassportType;
 import ru.validum.core.profile.CorruptField;
 import ru.validum.core.profile.IndividualProfile;
+import ru.validum.core.profile.IndividualProfileBuilder;
 import ru.validum.core.profile.IndividualProfileGenerator;
 import ru.validum.core.profile.Residency;
 
@@ -42,7 +43,7 @@ public class GenerationService {
 
   /** Raw-версия — core-модель без маппинга в DTO. Используется для CSV-пути. */
   public IndividualProfile generateIndividualRaw(IndividualGenerationRequest request) {
-    IndividualProfileGenerator.Builder builder =
+    IndividualProfileBuilder builder =
       IndividualProfileGenerator.builder().bikSource(bikSource);
 
     if (request.seed() != null) {
@@ -144,7 +145,7 @@ public class GenerationService {
   public IpProfile generateIpRaw(IpGenerationRequest request) {
     long seed = resolveBaseSeed(request.seed());
 
-    IndividualProfileGenerator.Builder builder =
+    IndividualProfileBuilder builder =
       IndividualProfileGenerator.builder().bikSource(bikSource).seed(seed);
 
     if (request.asOf() != null) {

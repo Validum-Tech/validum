@@ -19,7 +19,8 @@ import ru.validum.core.report.Coverage;
  */
 @Command(
   name = "coverage",
-  description = "Отчёт о покрытии набора: полнота и валидность ключевых полей")
+  description = "Отчёт о покрытии набора: полнота и валидность ключевых полей",
+  mixinStandardHelpOptions = true)
 public final class CoverageCommand implements Callable<Integer> {
 
   @Option(
@@ -90,18 +91,36 @@ public final class CoverageCommand implements Callable<Integer> {
       "итог: %d полей, %d с невалидными значениями, %d с пустыми%n",
       stats.size(), invalidFields, blankFields);
 
+    printValiditySummary(stats);
     printConsistency(rows);
     printDistributions(rows);
+  }
+
+  /**
+   * «Согласованность» — это не валидность, а смысловые правила набора. Чтобы отчёт не читали
+   * как проверку контрольных сумм, сначала печатается отдельная строка про валидность.
+   */
+  private void printValiditySummary(List<Coverage.FieldStat> stats) {
+    long checkedFields = stats.stream().filter(stat -> Coverage.isChecked(stat.field())).count();
+    long invalid = stats.stream().filter(stat -> Coverage.isChecked(stat.field()))
+        .mapToLong(Coverage.FieldStat::invalid).sum();
+    long values = stats.stream().filter(stat -> Coverage.isChecked(stat.field()))
+        .mapToLong(Coverage.FieldStat::present).sum();
+    System.out.println();
+    System.out.printf(
+      "Валидность значений: проверено %d полей, невалидных %d из %d значений%n",
+      checkedFields, invalid, values);
   }
 
   private void printConsistency(List<Map<String, String>> rows) {
     List<Consistency.Violation> violations = Consistency.check(rows);
     System.out.println();
+    String rules = "Согласованность набора (правила: документ/возраст, серия/регион выдачи, счёт/банк)";
     if (violations.isEmpty()) {
-      System.out.println("Согласованность: нарушений нет");
+      System.out.println(rules + ": нарушений нет");
       return;
     }
-    System.out.println("Согласованность: " + violations.size() + " нарушений");
+    System.out.println(rules + ": " + violations.size() + " нарушений");
     for (Consistency.Violation violation : violations) {
       System.out.println("  " + violation);
     }

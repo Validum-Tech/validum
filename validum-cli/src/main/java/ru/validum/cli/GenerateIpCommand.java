@@ -9,12 +9,15 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Mixin;
+import ru.validum.core.export.FieldSelection;
 import ru.validum.core.bank.BikSource;
 import ru.validum.core.export.IpProfileFlattener;
 import ru.validum.core.name.Gender;
 import ru.validum.core.organization.IpProfile;
 import ru.validum.core.organization.IpProfileGenerator;
 import ru.validum.core.profile.AgeDistribution;
+import ru.validum.core.profile.IndividualProfileBuilder;
 import ru.validum.core.profile.IndividualProfileGenerator;
 
 @Command(
@@ -24,8 +27,8 @@ import ru.validum.core.profile.IndividualProfileGenerator;
 )
 public final class GenerateIpCommand implements Callable<Integer> {
 
-  @Option(names = "--seed", description = "Базовый seed")
-  Long seed;
+  @Mixin CommonOptions common = new CommonOptions();
+
 
   @Option(
     names = "--as-of",
@@ -33,8 +36,6 @@ public final class GenerateIpCommand implements Callable<Integer> {
       + "от неё. Не задана — сегодня")
   String asOf;
 
-  @Option(names = {"-n", "--count"}, defaultValue = "1", description = "Количество (1–10000)")
-  int count;
 
   @Option(names = "--gender", description = "MALE или FEMALE")
   String gender;
@@ -62,22 +63,18 @@ public final class GenerateIpCommand implements Callable<Integer> {
     description = "Код ОКВЭД-2 (62.01, 41.20 …). Иначе — случайный из справочника")
   String okved;
 
-  @Option(names = "--format", defaultValue = "json",
-    description = "json | json-array | csv | csv-semicolon (русский Excel) | sql")
-  String format;
-
-  @Option(names = "--dialect", description = "SQL-диалект: postgres | oracle | mysql")
-  String dialect = "postgres";
-
-  @Option(names = "--table", description = "Имя таблицы для --format sql")
-  String table = "validum_ip";
-
-  @Option(names = "--no-ddl", description = "Без CREATE TABLE, только INSERT")
-  boolean noDdl;
+  @Option(
+    names = "--fields",
+    paramLabel = "<колонки>",
+    description = "Оставить только эти колонки (через запятую) или пресет short")
+  String fields;
 
 
-  @Option(names = {"-o", "--output"}, description = "Путь к файлу")
-  Path output;
+
+
+
+
+
 
   @Option(names = "--terrorist") boolean terrorist;
   @Option(names = "--blocked") boolean blocked;
@@ -86,25 +83,31 @@ public final class GenerateIpCommand implements Callable<Integer> {
     description = "Без повторов ОГРНИП в наборе (требует --seed); при исчерпании вариантов — exit 2")
   boolean unique;
 
+  private String tableName() {
+    return common.table != null && !common.table.isBlank()
+      ? common.table
+      : "validum_ip";
+  }
+
   @Override
   public Integer call() throws Exception {
-    if (count < 1 || count > 10_000) {
+    if (common.count < 1 || common.count > 10_000) {
       System.err.println("Ошибка: --count должен быть в диапазоне 1..10000");
       return 2;
     }
-    if (unique && seed == null) {
+    if (unique && common.seed == null) {
       System.err.println("Ошибка: --unique требует --seed, иначе набор невоспроизводим");
       return 2;
     }
-    long baseSeed = seed != null ? seed : System.nanoTime();
+    long baseSeed = common.seed != null ? common.seed : System.nanoTime();
     BikSource bikSource = CliBik.source();
 
-    List<IpProfile> profiles = new ArrayList<>(count);
+    List<IpProfile> profiles = new ArrayList<>(common.count);
     LocalDate asOfDate;
     try {
       asOfDate = AsOfOption.parse(asOf);
       UniqueGuard guard = unique ? new UniqueGuard("ОГРНИП", 1_000_000_000_000_000L) : null;
-      for (int i = 0; i < count; i++) {
+      for (int i = 0; i < common.count; i++) {
         long profileSeed = baseSeed + i;
         profiles.add(guard == null
           ? generateOne(profileSeed, bikSource, asOfDate)
@@ -115,23 +118,25 @@ public final class GenerateIpCommand implements Callable<Integer> {
       return 2;
     }
 
-    List<Map<String, String>> rows = IpProfileFlattener.flattenAll(profiles);
-    OutputFormat fmt = OutputFormat.fromString(format);
-    OutputMeta.print(System.err, baseSeed, asOfDate, seed == null);
-    OutputWriter.of(output, fmt, dialect, table, !noDdl).write(rows, baseSeed);
+    List<Map<String, String>> rows =
+      FieldSelection.keep(IpProfileFlattener.flattenAll(profiles), fields);
+    OutputFormat fmt = OutputFormat.fromString(common.format);
+    OutputMeta.print(System.err, baseSeed, asOfDate, common.seed == null);
+    OutputWriter.of(common.output, fmt, common.dialect, tableName(), !common.noDdl).write(rows, baseSeed);
     return 0;
   }
 
   /** Один профиль ИП под конкретный seed: опции командной строки применяются заново. */
   private IpProfile generateOne(long profileSeed, BikSource bikSource, LocalDate asOfDate) {
-    IndividualProfileGenerator.Builder b = IndividualProfileGenerator.builder()
+    IndividualProfileBuilder b = IndividualProfileGenerator.builder()
       .seed(profileSeed)
       .bikSource(bikSource);
     if (gender != null) b.gender(Gender.valueOf(gender.toUpperCase(Locale.ROOT)));
     if (age != null) b.age(age);
+    b.ageDistribution(parseAgeDistribution(ageDistribution));
     if (ageRange != null) {
       int[] range = parseAgeRange(ageRange);
-      b.ageRange(range[0], range[1]).ageDistribution(parseAgeDistribution(ageDistribution));
+      b.ageRange(range[0], range[1]);
     }
     if (region != null) b.region(RegionOption.parse(region));
     if (bik != null) b.bik(bik);
@@ -158,6 +163,7 @@ public final class GenerateIpCommand implements Callable<Integer> {
   }
 
   private static AgeDistribution parseAgeDistribution(String raw) {
+    if (raw == null || raw.isBlank()) return AgeDistribution.UNIFORM;
     try {
       return AgeDistribution.valueOf(raw.trim().toUpperCase(Locale.ROOT));
     } catch (IllegalArgumentException e) {

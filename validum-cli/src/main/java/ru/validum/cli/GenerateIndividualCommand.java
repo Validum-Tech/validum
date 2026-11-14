@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Mixin;
+import ru.validum.core.export.FieldSelection;
 import ru.validum.core.bank.BikSource;
 import ru.validum.core.document.DocumentType;
 import ru.validum.core.export.CsvExporter;
@@ -21,6 +23,7 @@ import ru.validum.core.name.Gender;
 import ru.validum.core.profile.AgeDistribution;
 import ru.validum.core.profile.CorruptField;
 import ru.validum.core.profile.IndividualProfile;
+import ru.validum.core.profile.IndividualProfileBuilder;
 import ru.validum.core.profile.IndividualProfileGenerator;
 
 @Command(
@@ -30,8 +33,8 @@ import ru.validum.core.profile.IndividualProfileGenerator;
 )
 public final class GenerateIndividualCommand implements Callable<Integer> {
 
-  @Option(names = "--seed", description = "Базовый seed (по умолчанию — System.nanoTime())")
-  Long seed;
+  @Mixin CommonOptions common = new CommonOptions();
+
 
   @Option(
     names = "--as-of",
@@ -39,9 +42,6 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
       + "от неё. Не задана — сегодня")
   String asOf;
 
-  @Option(names = {"-n", "--count"}, defaultValue = "1",
-    description = "Количество профилей (1–10000, по умолчанию 1)")
-  int count;
 
   @Option(names = "--gender", description = "MALE или FEMALE")
   String gender;
@@ -72,18 +72,9 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
     description = "Явный БИК банка (P3.3). Не найден в справочнике → exit 2")
   String bik;
 
-  @Option(names = "--format", defaultValue = "json",
-    description = "Формат: json | json-array | csv | csv-semicolon (русский Excel) | sql")
-  String format;
 
-  @Option(names = "--dialect", description = "SQL-диалект: postgres | oracle | mysql")
-  String dialect = "postgres";
 
-  @Option(names = "--table", description = "Имя таблицы для --format sql")
-  String table = "validum_individual";
 
-  @Option(names = "--no-ddl", description = "Без CREATE TABLE, только INSERT")
-  boolean noDdl;
 
 
   @Option(names = "--documents", split = ",",
@@ -94,8 +85,6 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
     description = "Как писать ДУЛ в CSV: inline | json | split (split пишет второй файл)")
   String documentsMode;
 
-  @Option(names = {"-o", "--output"}, description = "Путь к файлу (по умолчанию stdout)")
-  Path output;
 
   @Option(
     names = "--corrupt",
@@ -107,6 +96,12 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
     names = "--index",
     description = "Печатать индекс набора (№, идентификатор, ФИО, возраст, регион, банк, счёт) в stderr")
   boolean index;
+
+  @Option(
+    names = "--fields",
+    paramLabel = "<колонки>",
+    description = "Оставить только эти колонки (через запятую) или пресет short")
+  String fields;
 
   @Option(names = "--no-account", description = "Без счёта")
   boolean noAccount;
@@ -121,25 +116,37 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
     description = "Без повторов ИНН в наборе (требует --seed); при исчерпании вариантов — exit 2")
   boolean unique;
 
+  @Option(names = "--unique-pool",
+    description = "Сколько вариантов ИНН считать доступными (по умолчанию все 10^10). "
+      + "Нужен, чтобы показать честный отказ на маленьком пуле: --unique-pool 10 -n 11")
+  Long uniquePool;
+
+  private String tableName() {
+    return common.table != null && !common.table.isBlank()
+      ? common.table
+      : "validum_individual";
+  }
+
   @Override
   public Integer call() throws Exception {
-    if (count < 1 || count > 10_000) {
+    if (common.count < 1 || common.count > 10_000) {
       System.err.println("Ошибка: --count должен быть в диапазоне 1..10000");
       return 2;
     }
-    if (unique && seed == null) {
+    if (unique && common.seed == null) {
       System.err.println("Ошибка: --unique требует --seed, иначе набор невоспроизводим");
       return 2;
     }
-    long baseSeed = seed != null ? seed : System.nanoTime();
+    long baseSeed = common.seed != null ? common.seed : System.nanoTime();
     BikSource bikSource = CliBik.source();
 
-    List<IndividualProfile> profiles = new ArrayList<>(count);
+    List<IndividualProfile> profiles = new ArrayList<>(common.count);
     LocalDate asOfDate;
     try {
       asOfDate = AsOfOption.parse(asOf);
-      UniqueGuard guard = unique ? new UniqueGuard("ИНН", 10_000_000_000L) : null;
-      for (int i = 0; i < count; i++) {
+      long pool = uniquePool != null && uniquePool > 0 ? uniquePool : 10_000_000_000L;
+      UniqueGuard guard = unique ? new UniqueGuard("ИНН", pool) : null;
+      for (int i = 0; i < common.count; i++) {
         long profileSeed = baseSeed + i;
         profiles.add(guard == null
           ? newBuilder(profileSeed, bikSource, asOfDate).build().generate()
@@ -152,23 +159,24 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
       return 2;
     }
 
-    OutputFormat fmt = OutputFormat.fromString(format);
+    OutputFormat fmt = OutputFormat.fromString(common.format);
     DocumentsFormat docFormat =
       fmt == OutputFormat.CSV ? DocumentsFormat.fromString(documentsMode) : DocumentsFormat.INLINE;
-    if (docFormat == DocumentsFormat.SPLIT && output == null) {
+    if (docFormat == DocumentsFormat.SPLIT && common.output == null) {
       System.err.println(
         "Ошибка: --documents-mode split требует -o: вторая таблица пишется рядом с профилями");
       return 2;
     }
 
-    List<Map<String, String>> rows = IndividualProfileFlattener.flattenAll(profiles, docFormat);
-    OutputMeta.print(System.err, baseSeed, asOfDate, seed == null);
+    List<Map<String, String>> rows = FieldSelection.keep(
+      IndividualProfileFlattener.flattenAll(profiles, docFormat), fields);
+    OutputMeta.print(System.err, baseSeed, asOfDate, common.seed == null);
     if (corrupt != null && corrupt.length > 0) {
       System.err.println("# испорчено: " + String.join(",", corrupt).toLowerCase(Locale.ROOT));
     }
-    OutputWriter.of(output, fmt, dialect, table, !noDdl).write(rows, baseSeed);
+    OutputWriter.of(common.output, fmt, common.dialect, tableName(), !common.noDdl).write(rows, baseSeed);
     if (docFormat == DocumentsFormat.SPLIT) {
-      writeDocumentsTable(profiles, output);
+      writeDocumentsTable(profiles, common.output);
     }
     if (index) {
       printIndex(profiles);
@@ -200,16 +208,20 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
   }
 
   /** Свежий билдер профиля под конкретный seed: опции командной строки применяются заново. */
-  private IndividualProfileGenerator.Builder newBuilder(long profileSeed, BikSource bikSource, LocalDate asOfDate) {
-    IndividualProfileGenerator.Builder b = IndividualProfileGenerator.builder()
+  private IndividualProfileBuilder newBuilder(long profileSeed, BikSource bikSource, LocalDate asOfDate) {
+    IndividualProfileBuilder b = IndividualProfileGenerator.builder()
       .seed(profileSeed)
       .bikSource(bikSource)
       .withAccount(!noAccount);
     if (gender != null) b.gender(Gender.valueOf(gender.toUpperCase(Locale.ROOT)));
     if (age != null) b.age(age);
+    // Распределение применяется и без диапазона: --age-distribution realistic сам
+    // раздвигает когорты от 0 до 110, иначе флаг молча игнорировался.
+    String distribution = ageDistribution == null || ageDistribution.isBlank() ? "uniform" : ageDistribution;
+    b.ageDistribution(parseAgeDistribution(distribution));
     if (ageRange != null) {
       int[] range = parseAgeRange(ageRange);
-      b.ageRange(range[0], range[1]).ageDistribution(parseAgeDistribution(ageDistribution));
+      b.ageRange(range[0], range[1]);
     }
     if (region != null) b.region(RegionOption.parse(region));
     b.residency(parseResidency(residency, country));
@@ -263,6 +275,7 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
   }
 
   private static AgeDistribution parseAgeDistribution(String raw) {
+    if (raw == null || raw.isBlank()) return AgeDistribution.UNIFORM;
     try {
       return AgeDistribution.valueOf(raw.trim().toUpperCase(Locale.ROOT));
     } catch (IllegalArgumentException e) {
@@ -289,7 +302,7 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
     return fields.toArray(new CorruptField[0]);
   }
 
-  private void applyDocuments(IndividualProfileGenerator.Builder b) {
+  private void applyDocuments(IndividualProfileBuilder b) {
     if (documents == null || documents.length == 0) {
       return;
     }
@@ -323,7 +336,7 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
     String csv = rows.isEmpty()
       ? "\uFEFF" + String.join(",", DocumentsCsv.SPLIT_HEADER) + "\r\n"
       : CsvExporter.toCsv(rows);
-    Files.write(documentsPath(output), CsvExporter.toBytes(csv));
+    OutputFiles.write(documentsPath(output), CsvExporter.toBytes(csv));
   }
 
   private static Path documentsPath(Path output) {

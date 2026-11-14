@@ -128,4 +128,18 @@ class GenerateSpecTest {
   void missingSpecShowsUsage() {
     assertThat(run("generate")).isEqualTo(2);
   }
+
+  @Test
+  @DisplayName("Спецификация с ageRange и без ageDistribution не падает")
+  void ageRangeWithoutDistribution() throws Exception {
+    Path set = spec("""
+      {"type": "individual", "count": 3, "seed": 5, "format": "csv", "ageRange": "25-54"}
+      """);
+    Path out = tmp.resolve("range-only.csv");
+    int code = run("generate", "--spec", set.toString(), "-o", out.toString());
+
+    assertThat(code).isZero();
+    assertThat(Files.readAllLines(out, StandardCharsets.UTF_8)).hasSize(4);
+    assertThat(capturedErr.toString(StandardCharsets.UTF_8)).doesNotContain("Exception");
+  }
 }

@@ -50,6 +50,8 @@ public final class OrganizationProfileFlattener {
 
   private static void flattenAddress(Map<String, String> m, String prefix, Address a) {
     if (a == null) return;
+    m.put(prefix + "Region", a.region());
+    m.put(prefix + "RegionType", a.regionType());
     m.put(prefix + "PostalCode", a.postalCode());
     m.put(prefix + "City", a.city());
     m.put(prefix + "Street", a.street());

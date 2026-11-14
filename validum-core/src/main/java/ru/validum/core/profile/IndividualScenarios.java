@@ -43,7 +43,7 @@ public final class IndividualScenarios {
   }
 
   private static IndividualProfile createAdultResidentWithAccount(
-    IndividualProfileGenerator.Builder b) {
+    IndividualProfileBuilder b) {
     return b.age(ADULT_AGE).withAccount(true).build().generate();
   }
 
@@ -57,7 +57,7 @@ public final class IndividualScenarios {
   }
 
   private static IndividualProfile createAdultResidentWithoutAccount(
-    IndividualProfileGenerator.Builder b) {
+    IndividualProfileBuilder b) {
     return b.age(ADULT_AGE).withAccount(false).build().generate();
   }
 
@@ -72,7 +72,7 @@ public final class IndividualScenarios {
   }
 
   private static IndividualProfile createPensionerMale(
-    IndividualProfileGenerator.Builder b) {
+    IndividualProfileBuilder b) {
     return b.gender(Gender.MALE)
       .age(PENSION_AGE_MALE)
       .withAccount(true)
@@ -90,7 +90,7 @@ public final class IndividualScenarios {
   }
 
   private static IndividualProfile createPensionerFemale(
-    IndividualProfileGenerator.Builder b) {
+    IndividualProfileBuilder b) {
     return b.gender(Gender.FEMALE)
       .age(PENSION_AGE_FEMALE)
       .withAccount(true)
@@ -117,7 +117,7 @@ public final class IndividualScenarios {
   }
 
   private static IndividualProfile createSalaryClient(
-    IndividualProfileGenerator.Builder b) {
+    IndividualProfileBuilder b) {
     return b.age(SALARY_AGE)
       .withAccount(true)
       .categoryClient(CATEGORY_SALARY)
@@ -145,7 +145,7 @@ public final class IndividualScenarios {
   }
 
   private static IndividualProfile createNonResident(
-    Country country, IndividualProfileGenerator.Builder b) {
+    Country country, IndividualProfileBuilder b) {
     return b.residency(Residency.nonResident(country))
       .passportType(PassportType.FOREIGN)
       .passportCountry(country)
@@ -199,7 +199,7 @@ public final class IndividualScenarios {
   }
 
   private static IndividualProfile createNonResidentWithResidencePermit(
-    Country country, IndividualProfileGenerator.Builder b) {
+    Country country, IndividualProfileBuilder b) {
     return b.residency(Residency.nonResident(country))
       .passportType(PassportType.FOREIGN)
       .passportCountry(country)
@@ -230,7 +230,7 @@ public final class IndividualScenarios {
   }
 
   private static IndividualProfile createForeignerWithVisa(
-    Country country, IndividualProfileGenerator.Builder b) {
+    Country country, IndividualProfileBuilder b) {
     return b.residency(Residency.nonResident(country))
       .passportType(PassportType.FOREIGN)
       .passportCountry(country)
@@ -252,7 +252,7 @@ public final class IndividualScenarios {
     return createServiceman(IndividualProfileGenerator.builder().seed(seed));
   }
 
-  private static IndividualProfile createServiceman(IndividualProfileGenerator.Builder b) {
+  private static IndividualProfile createServiceman(IndividualProfileBuilder b) {
     return b.gender(Gender.MALE)
       .age(SERVICEMAN_AGE)
       .withAccount(true)
@@ -272,7 +272,7 @@ public final class IndividualScenarios {
     return createMinor(IndividualProfileGenerator.builder().seed(seed));
   }
 
-  private static IndividualProfile createMinor(IndividualProfileGenerator.Builder b) {
+  private static IndividualProfile createMinor(IndividualProfileBuilder b) {
     return b.age(MINOR_AGE)
       .withAccount(true)
       .documents(DocumentType.PASSPORT_RF)

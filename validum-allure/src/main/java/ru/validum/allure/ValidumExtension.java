@@ -11,6 +11,7 @@ import ru.validum.core.common.Region;
 import ru.validum.core.export.IndividualProfileFlattener;
 import ru.validum.core.name.Gender;
 import ru.validum.core.profile.IndividualProfile;
+import ru.validum.core.profile.IndividualProfileBuilder;
 import ru.validum.core.profile.IndividualProfileGenerator;
 
 /**
@@ -69,7 +70,7 @@ public final class ValidumExtension implements BeforeEachCallback {
       seed = seedAnn.value();
     }
 
-    IndividualProfileGenerator.Builder b = IndividualProfileGenerator.builder().seed(seed);
+    IndividualProfileBuilder b = IndividualProfileGenerator.builder().seed(seed);
     if (age != null) b.age(age);
     if (region != null) b.region(region);
     if (gender != null) b.gender(gender);

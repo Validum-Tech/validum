@@ -112,8 +112,8 @@ class IndividualProfilePoolsTest {
   // ── Manager ──────────────────────────────────────────────────────────────
 
   @Test
-  @DisplayName("1000 профилей → ровно 50 уникальных менеджеров")
-  void thousandProfilesCoverAllManagers() {
+  @DisplayName("1000 профилей → один менеджер (в справочнике одна заглушка)")
+  void thousandProfilesShareSingleManager() {
     IndividualProfileGenerator generator =
       IndividualProfileGenerator.builder().seed(SEED).build();
 
@@ -121,7 +121,7 @@ class IndividualProfilePoolsTest {
     for (int i = 0; i < 1000; i++) {
       managers.add(generator.generate().personalManager());
     }
-    assertThat(managers).hasSize(50);
+    assertThat(managers).containsExactly("Менеджер клиента");
   }
 
   @Test

@@ -29,7 +29,7 @@ import ru.validum.core.profile.IndividualProfileGenerator;
  * <p>Идея: одно и то же зерно и одна и та же дата расчёта обязаны давать байт-в-байт одинаковый
  * набор не только в рамках одного процесса (это ловит {@code DeterminismTest}), но и между
  * версиями. Любое осознанное изменение вывода обновляет эталон: {@code
- * ./gradlew :validum-core:test -Dvalidum.golden.update=true}.
+ * $env:VALIDUM_GOLDEN_UPDATE="1"; ./gradlew :validum-core:test}.
  *
  * <p>Эталон пишется в {@code src/test/resources/golden} при первом запуске — после этого прогон
  * ловит случайный дрейф справочников, форматов и порядка колонок.
@@ -39,7 +39,9 @@ class GoldenFixturesTest {
 
   private static final Path GOLDEN_DIR = Path.of("src/test/resources/golden");
 
-  private static final boolean UPDATE = Boolean.getBoolean("validum.golden.update");
+  private static final String UPDATE_FLAG = "validum.golden.update";
+  private static final boolean UPDATE =
+    Boolean.getBoolean(UPDATE_FLAG) || "1".equals(System.getenv("VALIDUM_GOLDEN_UPDATE"));
 
   private static final LocalDate AS_OF = LocalDate.of(2026, 11, 1);
 
@@ -50,6 +52,7 @@ class GoldenFixturesTest {
   @DisplayName("ФЛ: пять зёрен, по два профиля — стабильный SHA-256")
   void individualGolden() throws IOException {
     Map<Long, String> digests = new LinkedHashMap<>();
+    Map<String, String> preview = null;
     for (long seed : List.of(0L, 1L, 42L, 1234L, 99_999L)) {
       List<IndividualProfile> profiles = new ArrayList<>();
       for (int i = 0; i < 2; i++) {
@@ -61,14 +64,16 @@ class GoldenFixturesTest {
           .generate());
       }
       digests.put(seed, digest(IndividualProfileFlattener.flattenAll(profiles)));
+      if (seed == 0L) preview = IndividualProfileFlattener.flatten(profiles.get(0));
     }
-    verify("individual", digests);
+    verify("individual", digests, preview);
   }
 
   @Test
   @DisplayName("ЮЛ: три зерна, по два профиля — стабильный SHA-256")
   void organizationGolden() throws IOException {
     Map<Long, String> digests = new LinkedHashMap<>();
+    Map<String, String> preview = null;
     for (long seed : List.of(0L, 1L, 42L)) {
       List<OrganizationProfile> profiles = new ArrayList<>();
       for (int i = 0; i < 2; i++) {
@@ -79,12 +84,15 @@ class GoldenFixturesTest {
           .generate());
       }
       digests.put(seed, digest(OrganizationProfileFlattener.flattenAll(profiles)));
+      if (seed == 0L) preview = OrganizationProfileFlattener.flatten(profiles.get(0));
     }
-    verify("organization", digests);
+    verify("organization", digests, preview);
   }
 
-  private void verify(String name, Map<Long, String> digests) throws IOException {
+  private void verify(String name, Map<Long, String> digests, Map<String, String> preview)
+    throws IOException {
     Path file = GOLDEN_DIR.resolve(name + ".txt");
+    Path previewFile = GOLDEN_DIR.resolve(name + "-preview.txt");
     Map<Long, String> expected = Files.exists(file) && !UPDATE
       ? read(file)
       : Map.of();
@@ -97,8 +105,19 @@ class GoldenFixturesTest {
     if (expected.isEmpty()) {
       Files.createDirectories(GOLDEN_DIR);
       Files.writeString(file, fresh.toString(), StandardCharsets.UTF_8);
+      writePreview(previewFile, preview);
       return; // первая запись эталона: сверять пока не с чем
     }
+
+    // Читаемый снимок сверяется построчно: при смене контракта git diff показывает,
+    // какие именно поля изменились, а не только «хеш другой».
+    assertThat(Files.exists(previewFile))
+      .as("%s: нет читаемого эталона %s — пересоберите осознанно: "
+        + "$env:VALIDUM_GOLDEN_UPDATE=\"1\"; ./gradlew :validum-core:test", name, previewFile.getFileName())
+      .isTrue();
+    assertThat(Files.readAllLines(previewFile, StandardCharsets.UTF_8))
+      .as("%s: читаемый эталон разошёлся (см. %s)", name, previewFile.getFileName())
+      .isEqualTo(previewLines(preview));
 
     for (Map.Entry<Long, String> entry : digests.entrySet()) {
       assertThat(expected.get(entry.getKey()))
@@ -108,6 +127,17 @@ class GoldenFixturesTest {
         .as("%s: набор для seed=%d отклонился от эталона", name, entry.getKey())
         .isEqualTo(expected.get(entry.getKey()));
     }
+  }
+
+  private static List<String> previewLines(Map<String, String> row) {
+    List<String> lines = new ArrayList<>();
+    new TreeMap<>(row).forEach((key, value) -> lines.add(key + "=" + value));
+    return lines;
+  }
+
+  private static void writePreview(Path file, Map<String, String> row) throws IOException {
+    Files.createDirectories(file.getParent());
+    Files.write(file, previewLines(row), StandardCharsets.UTF_8);
   }
 
   private static Map<Long, String> read(Path file) throws IOException {

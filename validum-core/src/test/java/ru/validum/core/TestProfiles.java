@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import ru.validum.core.bank.BikSource;
 import ru.validum.core.bank.BikSources;
 import ru.validum.core.profile.IndividualProfile;
+import ru.validum.core.profile.IndividualProfileBuilder;
 import ru.validum.core.profile.IndividualProfileGenerator;
 
 /**
@@ -28,7 +29,7 @@ public final class TestProfiles {
   }
 
   /** Билдер с уже выставленными seed, справочником БИК и датой расчёта. */
-  public static IndividualProfileGenerator.Builder builder(long seed) {
+  public static IndividualProfileBuilder builder(long seed) {
     return IndividualProfileGenerator.builder()
       .seed(seed)
       .bikSource(BIK)

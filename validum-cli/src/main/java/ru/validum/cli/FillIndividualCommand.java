@@ -45,15 +45,23 @@ public final class FillIndividualCommand implements Callable<Integer> {
 
   @Override
   public Integer call() throws Exception {
-    List<Map<String, String>> rows =
-      CsvImporter.parse(Files.readString(input, StandardCharsets.UTF_8));
+    List<Map<String, String>> rows;
+    try {
+      rows = CsvImporter.parse(InputFiles.read(input));
+    } catch (IllegalArgumentException e) {
+      return InputFiles.fail(e);
+    }
     if (rows.isEmpty()) {
       System.err.println("Ошибка: во входном CSV нет строк с данными");
       return 2;
     }
     if (documentsFile != null) {
-      Map<String, List<IdentityDocument>> byKey = DocumentsCsv.groupRows(
-        CsvImporter.parse(Files.readString(documentsFile, StandardCharsets.UTF_8)));
+      Map<String, List<IdentityDocument>> byKey;
+      try {
+        byKey = DocumentsCsv.groupRows(CsvImporter.parse(InputFiles.read(documentsFile)));
+      } catch (IllegalArgumentException e) {
+        return InputFiles.fail(e);
+      }
       for (Map<String, String> row : rows) {
         attachDocuments(row, byKey);
       }
@@ -72,7 +80,7 @@ public final class FillIndividualCommand implements Callable<Integer> {
     String csv = CsvExporter.toCsv(filled);
 
     if (output != null) {
-      Files.write(output, CsvExporter.toBytes(csv));
+      OutputFiles.write(output, CsvExporter.toBytes(csv));
     } else {
       System.out.print(csv);
     }

@@ -104,6 +104,28 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+      # Предрелизная проверка: то, чего не видно из модульных тестов —
+      # версии во всех файлах, содержимое jar, поверхность CLI/REST, базовые сценарии.
+      - name: Справочник ЦБ для проверок
+        run: java -jar validum-cli/build/libs/validum.jar fetch-bik -o data/ED807.xml
+
+      - name: Демо-прогон (demo-check)
+        run: python3 tools/demo-check.py --jar validum-cli/build/libs/validum.jar --data data/ED807.xml --skip-excel
+
+      - name: Предрелизная проверка (release-check)
+        run: python3 tools/release-check.py --jar validum-cli/build/libs/validum.jar
+
+      - name: Смоук потребителя на JDK 17
+        run: |
+          ./gradlew :validum-core:publishToMavenLocal --no-daemon
+          python3 tools/consumer-smoke.py
+
+      - name: Смоук живого REST-сервиса
+        run: |
+          ./gradlew :validum-api:bootJar --no-daemon
+          java -jar validum-cli/build/libs/validum.jar fetch-bik -o data/ED807.xml
+          python3 tools/rest-smoke.py --jar "$(ls validum-api/build/libs/*.jar | head -1)" --root "$(pwd)" --keep-log
+
   build-jdk17:
     name: Build & Test (JDK 17)
     runs-on: ubuntu-latest

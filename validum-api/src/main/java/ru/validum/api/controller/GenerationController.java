@@ -19,6 +19,7 @@ import ru.validum.api.dto.*;
 import ru.validum.api.service.GenerationService;
 import ru.validum.core.Version;
 import ru.validum.core.export.CsvExporter;
+import ru.validum.core.export.FieldSelection;
 import ru.validum.core.export.IndividualProfileFlattener;
 import ru.validum.core.export.IpProfileFlattener;
 import ru.validum.core.export.OrganizationProfileFlattener;
@@ -70,7 +71,9 @@ public class GenerationController {
   public ResponseEntity<?> generateIndividualBatch(
     @RequestBody @Valid IndividualBatchRequest request,
     @Parameter(description = "Формат ответа: json, json-array, csv, csv-semicolon")
-    @RequestParam(required = false, defaultValue = "json") String format) {
+    @RequestParam(required = false, defaultValue = "json") String format,
+    @Parameter(description = "Оставить только эти колонки CSV (через запятую) или пресет short")
+    @RequestParam(required = false) String fields) {
 
     return switch (format.toLowerCase()) {
       case "json-array" ->
@@ -78,13 +81,15 @@ public class GenerationController {
       case "csv" ->
         csvBody(
           "validum-individual",
-          IndividualProfileFlattener.flattenAll(service.generateIndividualBatchRaw(request)),
+          FieldSelection.keep(
+            IndividualProfileFlattener.flattenAll(service.generateIndividualBatchRaw(request)), fields),
           false,
           request.seed());
       case "csv-semicolon" ->
         csvBody(
           "validum-individual",
-          IndividualProfileFlattener.flattenAll(service.generateIndividualBatchRaw(request)),
+          FieldSelection.keep(
+            IndividualProfileFlattener.flattenAll(service.generateIndividualBatchRaw(request)), fields),
           true,
           request.seed());
       default -> okWithMeta(service.generateIndividualBatch(request), request.seed());
@@ -98,7 +103,9 @@ public class GenerationController {
   public ResponseEntity<?> generateIpBatch(
     @RequestBody @Valid IpBatchRequest request,
     @Parameter(description = "Формат ответа: json, json-array, csv, csv-semicolon")
-    @RequestParam(required = false, defaultValue = "json") String format) {
+    @RequestParam(required = false, defaultValue = "json") String format,
+    @Parameter(description = "Оставить только эти колонки CSV (через запятую) или пресет short")
+    @RequestParam(required = false) String fields) {
 
     return switch (format.toLowerCase()) {
       case "json-array" ->
@@ -106,13 +113,15 @@ public class GenerationController {
       case "csv" ->
         csvBody(
           "validum-ip",
-          IpProfileFlattener.flattenAll(service.generateIpBatchRaw(request)),
+          FieldSelection.keep(
+            IpProfileFlattener.flattenAll(service.generateIpBatchRaw(request)), fields),
           false,
           request.seed());
       case "csv-semicolon" ->
         csvBody(
           "validum-ip",
-          IpProfileFlattener.flattenAll(service.generateIpBatchRaw(request)),
+          FieldSelection.keep(
+            IpProfileFlattener.flattenAll(service.generateIpBatchRaw(request)), fields),
           true,
           request.seed());
       default -> okWithMeta(service.generateIpBatch(request), request.seed());
@@ -126,7 +135,9 @@ public class GenerationController {
   public ResponseEntity<?> generateOrganizationBatch(
     @RequestBody @Valid OrganizationBatchRequest request,
     @Parameter(description = "Формат ответа: json, json-array, csv, csv-semicolon")
-    @RequestParam(required = false, defaultValue = "json") String format) {
+    @RequestParam(required = false, defaultValue = "json") String format,
+    @Parameter(description = "Оставить только эти колонки CSV (через запятую) или пресет short")
+    @RequestParam(required = false) String fields) {
 
     return switch (format.toLowerCase()) {
       case "json-array" ->
@@ -134,13 +145,17 @@ public class GenerationController {
       case "csv" ->
         csvBody(
           "validum-organization",
-          OrganizationProfileFlattener.flattenAll(service.generateOrganizationBatchRaw(request)),
+          FieldSelection.keep(
+            OrganizationProfileFlattener.flattenAll(service.generateOrganizationBatchRaw(request)),
+            fields),
           false,
           request.seed());
       case "csv-semicolon" ->
         csvBody(
           "validum-organization",
-          OrganizationProfileFlattener.flattenAll(service.generateOrganizationBatchRaw(request)),
+          FieldSelection.keep(
+            OrganizationProfileFlattener.flattenAll(service.generateOrganizationBatchRaw(request)),
+            fields),
           true,
           request.seed());
       default -> okWithMeta(service.generateOrganizationBatch(request), request.seed());

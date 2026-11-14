@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -31,6 +32,10 @@ import ru.validum.core.common.Region;
 public final class AddressBook {
 
   private static final String SUBJECTS_RESOURCE = "/addresses/subjects.tsv";
+  /** Реальные префиксы индексов по субъектам (из DOMA.DBF) — для аварийной генерации. */
+  private static final String INDEX_PREFIXES_RESOURCE = "/addresses/index-prefixes.tsv";
+
+  private static final Map<String, String[]> INDEX_PREFIXES = loadIndexPrefixes();
   private static final String SUBJECT_RESOURCE_TEMPLATE = "/addresses/%s.tsv.gz";
 
   private static final Map<String, List<Place>> CACHE = new ConcurrentHashMap<>();
@@ -126,7 +131,8 @@ public final class AddressBook {
     Place place = places.get(random.nextInt(places.size()));
     Street street = place.streets().get(random.nextInt(place.streets().size()));
 
-    String postalCode = firstNonBlank(street.index(), place.index(), proceduralIndex(random));
+    String postalCode =
+      firstNonBlank(street.index(), place.index(), proceduralIndex(random, subject.code()));
     String building = String.valueOf(1 + random.nextInt(150));
     String apartment = String.valueOf(1 + random.nextInt(300));
     // Человекочитаемо: «196240, Санкт-Петербург г, г. Пушкин, ул. Госпитальная, д. 12, кв. 5».
@@ -235,9 +241,42 @@ public final class AddressBook {
     return "";
   }
 
-  private static String proceduralIndex(Random random) {
-    // В срезе индексы есть не у всех улиц; правдоподобный шестизначный индекс для остальных.
-    return String.format("%06d", 100000 + random.nextInt(899999));
+  /**
+   * Аварийный индекс для мест, у которых в срезе нет своего: берём реальный префикс субъекта
+   * (из DOMA.DBF), а не случайные шесть цифр — иначе «Самарская обл» получала индекс Псковской.
+   */
+  static String proceduralIndex(Random random, String subjectCode) {
+    String[] prefixes = prefixesOf(subjectCode);
+    if (prefixes == null || prefixes.length == 0) {
+      return String.format("%06d", 100000 + random.nextInt(899999));
+    }
+    return prefixes[random.nextInt(prefixes.length)] + String.format("%03d", random.nextInt(1000));
+  }
+
+  private static String[] prefixesOf(String subjectCode) {
+    if (subjectCode == null) return null;
+    return INDEX_PREFIXES.get(subjectCode);
+  }
+
+  private static Map<String, String[]> loadIndexPrefixes() {
+    try (InputStream in = AddressBook.class.getResourceAsStream(INDEX_PREFIXES_RESOURCE)) {
+      if (in == null) {
+        return Map.of();
+      }
+      Map<String, String[]> map = new HashMap<>();
+      try (BufferedReader reader =
+             new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          int tab = line.indexOf('\t');
+          if (tab <= 0 || tab == line.length() - 1) continue;
+          map.put(line.substring(0, tab), line.substring(tab + 1).split(","));
+        }
+      }
+      return Map.copyOf(map);
+    } catch (IOException e) {
+      return Map.of();
+    }
   }
 
   private static List<Subject> loadSubjects() {

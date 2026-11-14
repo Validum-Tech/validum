@@ -75,4 +75,23 @@ class AgeDistributionTest {
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessageContaining("не перевёрнут");
   }
+
+  @Test
+  @DisplayName("Реалистичное распределение работает и без --age-range: дети и пенсионеры есть")
+  void realisticWithoutRange() {
+    IndividualProfileGenerator gen =
+      IndividualProfileGenerator.builder()
+        .seed(7)
+        .bikSource(BIK)
+        .asOf(AS_OF)
+        .ageDistribution(AgeDistribution.REALISTIC)
+        .build();
+    List<Integer> ages = new ArrayList<>();
+    for (int i = 0; i < 400; i++) {
+      ages.add(gen.generate().ageAt(AS_OF));
+    }
+    assertThat(ages).anyMatch(age -> age < 18);
+    assertThat(ages).anyMatch(age -> age > 65);
+    assertThat(ages.stream().distinct().count()).isGreaterThan(40);
+  }
 }

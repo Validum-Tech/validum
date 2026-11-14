@@ -97,6 +97,20 @@ class UniqueCliTest {
   }
 
   @Test
+  @DisplayName("--unique-pool 10 и 11 строк → exit 2, честный текст про исчерпанный пул")
+  void exhaustionIsReportedWithPoolSize() {
+    int code = run(
+      "generate", "individual", "--seed", "1", "-n", "11",
+      "--unique", "--unique-pool", "10");
+
+    assertThat(code).isEqualTo(2);
+    assertThat(capturedErr.toString(StandardCharsets.UTF_8))
+      .contains("пул исчерпан")
+      .contains("из 10 вариантов")
+      .contains("--unique-pool");
+  }
+
+  @Test
   @DisplayName("--unique работает для ИП (ОГРНИП)")
   void ipUniqueOgrnips() throws Exception {
     Path file = out("ip.json");

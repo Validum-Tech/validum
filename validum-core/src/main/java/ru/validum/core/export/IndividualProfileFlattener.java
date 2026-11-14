@@ -90,6 +90,7 @@ public final class IndividualProfileFlattener {
     m.put("passportNumber", p.number());
     m.put("passportIssuedBy", p.issuedBy());
     m.put("passportIssueDate", formatDate(p.issueDate()));
+    m.put("passportExpirationDate", formatDate(p.expirationDate()));
     m.put("passportDepartmentCode", p.departmentCode());
     m.put("passportType", p.type().name());
     m.put("passportCountry", p.country().isoCode());
@@ -97,6 +98,8 @@ public final class IndividualProfileFlattener {
 
   private static void flattenAddress(Map<String, String> m, String prefix, Address a) {
     if (a == null) return;
+    m.put(prefix + "Region", a.region());
+    m.put(prefix + "RegionType", a.regionType());
     m.put(prefix + "PostalCode", a.postalCode());
     m.put(prefix + "City", a.city());
     m.put(prefix + "Street", a.street());
