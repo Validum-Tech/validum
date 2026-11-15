@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import ru.validum.core.address.Address;
 import ru.validum.core.bank.Bank;
+import ru.validum.core.card.MirCard;
+import ru.validum.core.card.MirCardOutcome;
 import ru.validum.core.common.Country;
 import ru.validum.core.contact.Contact;
 import ru.validum.core.contact.ContactType;
@@ -65,7 +67,33 @@ public final class ProfileFromCsv {
       row.get("account"),
       DocumentsCsv.parse(row.get(DocumentsCsv.COLUMN)),
       asOf(row),
-      blankToNull(row.get("personId")));
+      blankToNull(row.get("personId")),
+      blankToNull(row.get("employerOgrn")),
+      card(row));
+  }
+
+  /** Карта из плоской строки; пустой номер — карт нет. */
+  private static List<MirCard> card(Map<String, String> row) {
+    String pan = blankToNull(row.get("cardPan"));
+    if (pan == null) {
+      return List.of();
+    }
+    String expiry = row.get("cardExpiry");
+    int month = 1;
+    int year = 0;
+    if (expiry != null && expiry.matches("\\d{2}/\\d{2}")) {
+      month = Integer.parseInt(expiry.substring(0, 2));
+      year = 2000 + Integer.parseInt(expiry.substring(3, 5));
+    }
+    String outcome = row.get("cardOutcome");
+    MirCardOutcome resolved = MirCardOutcome.SUCCESS;
+    for (MirCardOutcome candidate : MirCardOutcome.values()) {
+      if (candidate.russianName().equals(outcome)) {
+        resolved = candidate;
+        break;
+      }
+    }
+    return List.of(new MirCard(pan, month, year, resolved));
   }
 
   private static String blankToNull(String value) {

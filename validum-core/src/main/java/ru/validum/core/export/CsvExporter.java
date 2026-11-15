@@ -167,6 +167,7 @@ public final class CsvExporter {
   private static Map<String, String> rusHeadersMap() {
     Map<String, String> m = new LinkedHashMap<>();
     m.put("personId", "Идентификатор");
+    m.put("employerOgrn", "ОГРН работодателя");
     m.put("fullName", "ФИО");
     m.put("gender", "Пол");
     m.put("birthDate", "Дата рождения");
@@ -227,6 +228,10 @@ public final class CsvExporter {
     m.put("bankCity", "Город банка");
     m.put("bankRegion", "Регион банка");
     m.put("account", "Счёт");
+    m.put("cardPan", "Номер карты");
+    m.put("cardExpiry", "Срок действия карты");
+    m.put("cardOutcome", "Исход операции по карте");
+    m.put("cardCount", "Карт у клиента");
     m.put("documents", "Документы");
     m.put("isResident", "Резидент");
     m.put("citizenship", "Гражданство");

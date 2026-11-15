@@ -43,6 +43,15 @@ public final class GenerateCommand implements Callable<Integer> {
       return 2;
     }
 
+    if (SetRunner.isSet(spec)) {
+      try {
+        return new SetRunner(spec, output).run();
+      } catch (IllegalArgumentException e) {
+        System.err.println("Ошибка в " + spec + ": " + e.getMessage());
+        return 2;
+      }
+    }
+
     GenerateSpec specification;
     try {
       specification = GenerateSpec.load(spec);

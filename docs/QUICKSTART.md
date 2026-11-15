@@ -14,25 +14,14 @@ Validum создаёт **вымышленные** данные для тесто
 данных клиентов, — но ответственность за то, что вы генерируете и куда кладёте, остаётся
 на операторе.
 
-## 🚀 Быстрый старт
+## 🚀 Первый прогон
 
-Три команды — от нуля до данных. Нужен только JDK 17+ (или Docker).
+Первые команды и объяснение, что происходит, — в [туториале](TUTORIAL.md)
+и в [README](../README.md#за-30-секунд). Здесь — установка, сборка и проверки.
 
-```powershell
-# 1. Справочник участников ЦБ (обязателен: 1380 участников, 370 банков)
-java -jar validum.jar fetch-bik -o data/ED807.xml
-
-# 2. Профиль клиента с реквизитами, банком и счётом
-java -jar validum.jar generate individual --seed 42
-
-# 3. Тысяча клиентов в CSV / SQL / JSON
-java -jar validum.jar generate individual --seed 42 -n 1000 --format csv -o clients.csv
-java -jar validum.jar generate individual --seed 42 -n 1000 --format sql --dialect postgres -o seed.sql
-```
-
-Собрать jar: `./gradlew :validum-cli:shadowJar` → `validum-cli/build/libs/validum.jar`.
-Пошаговые сценарии под конкретные задачи — в [`docs/recipes/`](recipes/README.md)
-(фикстуры в JUnit, заливка в БД, нерезиденты, ДУЛ, ED807/ED808, детерминизм, Docker).
+Собрать jar из исходников: `./gradlew :validum-cli:shadowJar` →
+`validum-cli/build/libs/validum.jar`. Готовые сценарии под конкретные задачи — в
+[`recipes/`](recipes/README.md).
 
 ---
 
@@ -101,11 +90,11 @@ java -jar .\validum-cli\build\libs\validum.jar generate individual --seed 42 --f
 
 | Модуль | Тестов |
 |---|---|
-| `validum-core` | **567** |
-| `validum-api` | **80** |
-| `validum-cli` | **55** |
+| `validum-core` | **679** |
+| `validum-api` | **92** |
+| `validum-cli` | **114** |
 | `validum-allure` | **19** |
-| **Итого** | **860** |
+| **Итого** | **906** |
 
 Покрытие строк по jacoco (прогон 30.10.2026): `validum-core` — **89,2%** (2309/2588), `validum-api` — **92,2%** (404/438), `validum-cli` — считается тем же отчётом (HTML — `validum-cli/build/reports/jacoco/test/html/index.html`). Худшие пакеты: `validation` (75,9%), `common` (77,2%), `address` (77,8%); полностью покрыты `passport`, `snils`, `ogrn`, `random`. HTML-отчёт — `validum-core/build/reports/jacoco/test/html/index.html`.
 

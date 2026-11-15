@@ -3,6 +3,7 @@ package ru.validum.core.export;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
+import ru.validum.core.card.MirCard;
 import java.util.Map;
 import ru.validum.core.address.Address;
 import ru.validum.core.bank.Bank;
@@ -50,6 +51,7 @@ public final class IndividualProfileFlattener {
   public static Map<String, String> flatten(IndividualProfile p, DocumentsFormat format) {
     Map<String, String> m = new LinkedHashMap<>();
     m.put("personId", p.personId() == null ? "" : p.personId());
+    m.put("employerOgrn", p.employerOgrn() == null ? "" : p.employerOgrn());
     m.put("fullName", p.fullName());
     m.put("gender", p.gender().name());
     m.put("birthDate", formatDate(p.birthDate()));
@@ -71,6 +73,7 @@ public final class IndividualProfileFlattener {
     m.put("blocked", String.valueOf(p.blocked()));
     flattenBank(m, p.bank());
     m.put("account", p.account());
+    flattenCards(m, p.cards());
     List<IdentityDocument> documents = p.documents() == null ? List.of() : p.documents();
     m.put(DocumentsCsv.COLUMN, switch (format) {
       case JSON -> DocumentsCsv.json(documents);
@@ -106,6 +109,19 @@ public final class IndividualProfileFlattener {
     m.put(prefix + "Building", a.building());
     m.put(prefix + "Apartment", a.apartment());
     m.put(prefix + "Formatted", a.formatted());
+  }
+
+  /**
+   * Карты «Мир»: в плоской строке — первая карта и их количество. Подробности по каждой карте
+   * живут в отдельной таблице ({@link CardsCsv}), чтобы не плодить колонки {@code card1*, card2*}.
+   */
+  private static void flattenCards(Map<String, String> m, List<MirCard> cards) {
+    List<MirCard> list = cards == null ? List.of() : cards;
+    MirCard first = list.isEmpty() ? null : list.get(0);
+    m.put("cardPan", first == null ? "" : first.pan());
+    m.put("cardExpiry", first == null ? "" : first.expiry());
+    m.put("cardOutcome", first == null ? "" : first.outcome().russianName());
+    m.put("cardCount", String.valueOf(list.size()));
   }
 
   private static void flattenContact(Map<String, String> m, String prefix, Contact c) {

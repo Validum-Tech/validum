@@ -7,7 +7,7 @@
 
 ```powershell
 java -jar validum.jar fetch-bik -o data/ED807.xml
-# → Справочник: 1380 участников, из них 370 действующих банков
+# → Справочник: около 1,4 тыс. участников, из них около 370 действующих банков
 ```
 
 Если файла нет, банковские сценарии честно падают: CLI — `exit 2`, REST — `503 bik_source_missing`.
@@ -135,7 +135,7 @@ curl -X POST "http://localhost:8080/api/v1/scenarios/foreigner-with-visa?seed=42
 curl -X POST "http://localhost:8080/api/v1/scenarios/serviceman?seed=42"
 ```
 
-**Что получилось.** Мужчина 20 лет, паспорт РФ + военный билет (код 07, серия — две заглавные буквы).
+**Что получилось.** Мужчина 20 лет, паспорт РФ + военный билет (exit 07, серия — две заглавные буквы).
 Правила совместимости проверяет `DocumentRules`: билет только мужчине, призывной возраст 18–27.
 
 **Как проверить.** `gender=MALE`, `age=20`, `documents[1].spdulCode == "07"`.
@@ -221,8 +221,8 @@ java -jar validum.jar export ed808 --bik 044525225 -o ed808.xml
 **Задача.** Нужны РКЦ, казначейство, конкурсные управляющие — не только банки (17 кодов `PtType`).
 
 ```powershell
-java -jar validum.jar participants --file data/ED807.xml              # все 1380 участников
-java -jar validum.jar participants --file data/ED807.xml --type 20    # 370 банков
+java -jar validum.jar participants --file data/ED807.xml              # все участники (в выгрузке ЦБ 09.2026 — 1380)
+java -jar validum.jar participants --file data/ED807.xml --type 20    # действующие банки (в выгрузке ЦБ 09.2026 — 370)
 java -jar validum.jar participants --file data/ED807.xml --type RKC   # 13 расчётно-кассовых центров
 java -jar validum.jar participants --file data/ED807.xml --type 90    # 280 конкурсных управляющих
 java -jar validum.jar participants --file data/ED807.xml --type 52    # 141 территориальный орган ФК
@@ -231,7 +231,7 @@ java -jar validum.jar participants --file data/ED807.xml --type 52    # 141 те
 **Что получилось.** Таблица БИК / PtType / тип / корсчёт / наименование. Код принимается числом (`52`)
 или именем (`TREASURY`).
 
-**Как проверить.** Сумма по всем типам = 1380; `--type 20` = 370.
+**Как проверить.** «Всего выведено» (строка суммы) должно совпасть с числом записей в файле; `--type 20` — только действующие банки. Числа зависят от выгрузки ЦБ: в официальной за 09.2026 — 1380 участников и 370 банков, в локальной `data/ED807.xml` — 1360 и 368.
 
 ---
 

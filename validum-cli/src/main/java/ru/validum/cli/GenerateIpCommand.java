@@ -121,6 +121,10 @@ public final class GenerateIpCommand implements Callable<Integer> {
     List<Map<String, String>> rows =
       FieldSelection.keep(IpProfileFlattener.flattenAll(profiles), fields);
     OutputFormat fmt = OutputFormat.fromString(common.format);
+    if (fmt == OutputFormat.JSON_NESTED) {
+      System.err.println("Ошибка: json-nested поддерживается только для generate individual");
+      return 2;
+    }
     OutputMeta.print(System.err, baseSeed, asOfDate, common.seed == null);
     OutputWriter.of(common.output, fmt, common.dialect, tableName(), !common.noDdl).write(rows, baseSeed);
     return 0;

@@ -15,6 +15,7 @@ import picocli.CommandLine.Mixin;
 import ru.validum.core.export.FieldSelection;
 import ru.validum.core.bank.BikSource;
 import ru.validum.core.document.DocumentType;
+import ru.validum.core.export.CardsCsv;
 import ru.validum.core.export.CsvExporter;
 import ru.validum.core.export.DocumentsCsv;
 import ru.validum.core.export.DocumentsFormat;
@@ -84,6 +85,10 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
   @Option(names = "--documents-mode", defaultValue = "inline",
     description = "Как писать ДУЛ в CSV: inline | json | split (split пишет второй файл)")
   String documentsMode;
+
+  @Option(names = "--cards", defaultValue = "1",
+    description = "Сколько карт «Мир» выдать клиенту: 0 — без карты, 1 — в профиле, N>1 — таблица <output>-cards.csv")
+  int cards;
 
 
   @Option(
@@ -168,15 +173,32 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
       return 2;
     }
 
+    if (fmt == OutputFormat.JSON_NESTED && fields != null) {
+      System.err.println("Ошибка: --fields работает с плоскими форматами; для json-nested не нужен");
+      return 2;
+    }
     List<Map<String, String>> rows = FieldSelection.keep(
       IndividualProfileFlattener.flattenAll(profiles, docFormat), fields);
     OutputMeta.print(System.err, baseSeed, asOfDate, common.seed == null);
     if (corrupt != null && corrupt.length > 0) {
       System.err.println("# испорчено: " + String.join(",", corrupt).toLowerCase(Locale.ROOT));
     }
-    OutputWriter.of(common.output, fmt, common.dialect, tableName(), !common.noDdl).write(rows, baseSeed);
+    OutputWriter writer = OutputWriter.of(
+      common.output, fmt, common.dialect, tableName(), !common.noDdl);
+    if (fmt == OutputFormat.JSON_NESTED) {
+      writer.writeNested(profiles, baseSeed);
+    } else {
+      writer.write(rows, baseSeed);
+    }
     if (docFormat == DocumentsFormat.SPLIT) {
       writeDocumentsTable(profiles, common.output);
+    }
+    if (cards > 1) {
+      if (common.output == null) {
+        System.err.println("Ошибка: --cards больше 1 требует -o: таблица карт пишется рядом с профилями");
+        return 2;
+      }
+      writeCardsTable(profiles, common.output);
     }
     if (index) {
       printIndex(profiles);
@@ -227,6 +249,7 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
     b.residency(parseResidency(residency, country));
     if (bik != null) b.bik(bik);
     if (asOfDate != null) b.asOf(asOfDate);
+    b.cards(cards);
     applyDocuments(b);
     if (corrupt != null && corrupt.length > 0) {
       b.corrupt(parseCorrupt(corrupt));
@@ -325,6 +348,25 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
         : DocumentType.valueOf(v.toUpperCase(Locale.ROOT)));
     }
     return types;
+  }
+
+  private static void writeCardsTable(List<IndividualProfile> profiles, Path output)
+      throws IOException {
+    List<Map<String, String>> rows = new ArrayList<>();
+    for (IndividualProfile profile : profiles) {
+      rows.addAll(CardsCsv.toRows(profile.personId(), profile.cards()));
+    }
+    String csv = rows.isEmpty()
+      ? "\uFEFF" + String.join(",", CardsCsv.SPLIT_HEADER) + "\r\n"
+      : CsvExporter.toCsv(rows);
+    OutputFiles.write(cardsPath(output), CsvExporter.toBytes(csv));
+  }
+
+  private static Path cardsPath(Path output) {
+    String name = output.getFileName().toString();
+    int dot = name.lastIndexOf('.');
+    String target = dot > 0 ? name.substring(0, dot) + "-cards.csv" : name + "-cards.csv";
+    return output.resolveSibling(target);
   }
 
   private static void writeDocumentsTable(List<IndividualProfile> profiles, Path output)

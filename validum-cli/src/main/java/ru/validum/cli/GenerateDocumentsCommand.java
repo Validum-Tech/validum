@@ -80,9 +80,13 @@ public final class GenerateDocumentsCommand implements Callable<Integer> {
       }
     }
 
+    OutputFormat format = OutputFormat.fromString(common.format);
+    if (format == OutputFormat.JSON_NESTED) {
+      System.err.println("Ошибка: json-nested поддерживается только для generate individual");
+      return 2;
+    }
     OutputMeta.print(System.err, baseSeed, asOfDate, common.seed == null);
-    OutputWriter.of(
-      common.output, OutputFormat.fromString(common.format), common.dialect, tableName(), !common.noDdl)
+    OutputWriter.of(common.output, format, common.dialect, tableName(), !common.noDdl)
       .write(rows, baseSeed);
     return 0;
   }

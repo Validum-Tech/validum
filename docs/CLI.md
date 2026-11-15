@@ -52,7 +52,7 @@ POST /api/v1/generate/individual/batch
 }
 ```
 
-**P3.3:** в батч можно добавить `"bik": "044525225"` — все профили в пакете получат этот банк.
+**P3.3:** в батч можно добавить `"bik": "044525225"` — все профили в батче получат этот банк.
 
 Ответ (по умолчанию `json`): `{ "count": 100, "seed": 42, "profiles": [...] }`.
 
@@ -164,7 +164,7 @@ Fat JAR на Picocli. **Без Spring.** ~15 МБ со справочникам�
 # → validum-cli/build/libs/validum.jar
 ```
 
-### Быстрый старт
+### Справка и знакомство
 
 ```powershell
 java -jar validum.jar --help
@@ -186,13 +186,58 @@ java -jar validum.jar generate ip --seed 1 --count 10 --region MOSCOW --format j
 
 # 5 ЮЛ типа ГУП
 java -jar validum.jar generate organization --seed 42 --count 5 --type SE --region MOSCOW --format csv -o gup.csv
+
+# Карты «Мир»: у каждого клиента по две, вторая таблица — рядом
+java -jar validum.jar generate individual --seed 42 --count 3 --cards 2 --format csv -o out/clients.csv
+# → out/clients.csv и out/clients-cards.csv
+
+# Вложенный JSON: профиль как в REST, а не плоская строка
+java -jar validum.jar generate individual --seed 42 --format json-nested -o out/clients.json
 ```
+
+### Набор из нескольких сущностей (`type: "set"`)
+
+Один прогон создаёт организации, людей и ИП **со связью «человек → работодатель»** — то, что нужно,
+чтобы засеять несколько связанных таблиц. Ссылка проставляется по ОГРН организации.
+
+```powershell
+java -jar validum.jar generate --spec out/demo-set.json
+```
+
+```json
+{
+  "type": "set",
+  "seed": 42,
+  "asOf": "2026-11-15",
+  "output": "out/demo-set.csv",
+  "members": [
+    {"name": "orgs",   "kind": "organization", "count": 2},
+    {"name": "people", "kind": "individual",   "count": 10, "employer": "orgs"},
+    {"name": "ip",     "kind": "ip",           "count": 2,  "employer": "orgs"}
+  ]
+}
+```
+
+Что получится рядом с `out/demo-set.csv`:
+
+| Файл | Содержимое |
+|---|---|
+| `demo-set-organizations.csv` | профили ЮЛ — загружать первыми |
+| `demo-set-individuals.csv` | ФЛ с заполненным `employerOgrn` |
+| `demo-set-ip.csv` | ИП (их `base` — тот же человек с `employerOgrn`) |
+| `demo-set-relations.csv` | связи `personId → employerOgrn` (две колонки) |
+| `demo-set-teardown.sql` | откат: `DELETE` по созданным строкам в обратном порядке (дети → родители), без DDL |
+
+Правила: `kind` — `organization | individual | ip`; `employer` указывает на `name` участника-организации;
+работодатель выдаётся по кругу (`i-й человек → i-я организация`); каждому участнику достаётся свой seed
+(`seed + номер × 10007`), поэтому набор воспроизводим целиком; `count` — сколько записей у участника.
+Скрипт отката пишется всегда; отключается полем `"teardown": false`.
 
 ### Валидация (exit 0/1)
 
 ```powershell
-java -jar validum.jar validate inn 500100732259       # → exit 0
-java -jar validum.jar validate inn 500100732258       # → exit 1
+java -jar validum.jar validate inn 500100732259       # → код 0
+java -jar validum.jar validate inn 500100732258       # → код 1
 java -jar validum.jar validate ogrnip 304500116000157
 ```
 
@@ -355,7 +400,7 @@ Expand-Archive -Path data\newbik.zip -DestinationPath data\
 Rename-Item data\*.xml data\ED807.xml
 ```
 
-**Парсер:** WINDOWS-1251, namespace `urn:cbr-ru:ed:v2.0`, фильтры `PtType="20"`, `PSAC`, `CRSA`, `ACAC`. Из ~1380 участников — **370 банков** (все участники — `participants --file`).
+**Парсер:** WINDOWS-1251, namespace `urn:cbr-ru:ed:v2.0`, фильтры `PtType="20"`, `PSAC`, `CRSA`, `ACAC`. Из ~1,4 тыс. участников — **около 370 действующих банков** (все участники — `participants --file`).
 
 ### Где ищется файл
 

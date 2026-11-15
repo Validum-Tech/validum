@@ -24,6 +24,8 @@ import ru.validum.core.address.FiasMode;
 import ru.validum.core.bank.Bank;
 import ru.validum.core.bank.BikGenerator;
 import ru.validum.core.bank.BikSource;
+import ru.validum.core.card.MirCard;
+import ru.validum.core.card.MirCardGenerator;
 import ru.validum.core.bank.BikSources;
 import ru.validum.core.common.Country;
 import ru.validum.core.common.PersonIds;
@@ -118,6 +120,9 @@ public final class IndividualProfileGenerator implements DataGenerator {
   private final boolean autoDocuments;
   private final LocalDate asOf;
   private final Long seedValue;
+  private final String employerOgrn;
+  private final int cardCount;
+  private long cardCounter;
 
   private final NameGenerator nameGen;
   private final PassportGenerator passportGen;
@@ -166,6 +171,8 @@ public final class IndividualProfileGenerator implements DataGenerator {
     this.autoDocuments = b.autoDocuments;
     this.asOf = b.asOf != null ? b.asOf : LocalDate.now();
     this.seedValue = b.seedValue;
+    this.employerOgrn = b.employerOgrn;
+    this.cardCount = b.cardCount;
 
     this.nameGen = new NameGenerator(random);
     this.passportGen = new PassportGenerator(random);
@@ -279,6 +286,10 @@ public final class IndividualProfileGenerator implements DataGenerator {
         : null;
 
     List<IdentityDocument> documents = generateDocuments(g, birthDate, a, asOf, regionCode);
+    // Свой поток для карт: генерация карты не должна сдвигать случайные числа остальных полей
+    // (иначе каждое новое поле меняет весь профиль и ломает эталоны и пулы).
+    long cardSeed = seedValue != null ? seedValue * 1_000_003L + cardCounter++ : ++cardCounter * 7_919L;
+    List<MirCard> cards = new MirCardGenerator(new Random(cardSeed)).next(asOf, cardCount);
 
     // personId детерминирован seed: тот же seed → тот же идентификатор в CLI и REST.
     String personId = seedValue == null ? null : PersonIds.of(seedValue);
@@ -307,7 +318,9 @@ public final class IndividualProfileGenerator implements DataGenerator {
       account,
       documents,
       asOf,
-      personId);
+      personId,
+      employerOgrn,
+      cards);
   }
 
   /** Возраст профиля: явное значение, иначе диапазон с распределением, иначе каскадный дефолт. */
