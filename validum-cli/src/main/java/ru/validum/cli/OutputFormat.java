@@ -7,6 +7,8 @@ public enum OutputFormat {
   CSV_SEMICOLON,
   JSON,
   JSON_ARRAY,
+  /** Вложенный JSON: структура профиля (passport, addresses, bank, cards) вместо плоской строки. */
+  JSON_NESTED,
   SQL;
 
   public static OutputFormat fromString(String s) {
@@ -18,9 +20,10 @@ public enum OutputFormat {
       case "json_array" -> JSON_ARRAY;
       case "csv" -> CSV;
       case "csv_semicolon", "csv_excel" -> CSV_SEMICOLON;
+      case "json_nested", "nested" -> JSON_NESTED;
       case "sql", "ddl" -> SQL;
       default -> throw new IllegalArgumentException(
-        "Неизвестный формат: '" + s + "'. Допустимо: json, json-array, csv, csv-semicolon, sql");
+        "Неизвестный формат: '" + s + "'. Допустимо: json, json-array, csv, csv-semicolon, json-nested, sql");
     };
   }
 }

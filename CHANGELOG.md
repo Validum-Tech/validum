@@ -2,9 +2,30 @@
 
 Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии — [SemVer](https://semver.org/lang/ru/).
 
-## [Unreleased] — 0.5.0
+## [Unreleased] — 0.6.0
 
-Ничего не запланировано — состав следующей версии определится после 0.4.0.
+## [0.5.0] — 2026-11-15
+
+Связанный набор и карты «Мир».
+
+### Added
+- **Связь «человек → работодатель»:** колонка `employerOgrn` («ОГРН работодателя») в плоской выдаче,
+  `builder.employer(ogrn)`, строка в `describe`; круговая операция `flatten → parse` сохраняет связь.
+- **Карты «Мир»:** `--cards N` (по умолчанию 1) и классы `MirCard`/`MirCardGenerator`/`MirCardOutcome`;
+  BIN `220000–220499`, 16 цифр с проверкой Луна, срок +2…+5 лет от `asOf`, 90 % успешных операций;
+  колонки `cardPan`, `cardExpiry`, `cardOutcome`, `cardCount`, строки в `describe`; при `--cards > 1`
+  и `-o` пишется вторая таблица `<output>-cards.csv`; `coverage` проверяет BIN и Луна.
+- **`--format json-nested`:** вложенный JSON (профиль как в REST-DTO: `passport`, `addresses`,
+  `contacts`, `bank`, `cards`, `documents`) вместо плоской строки; только для `generate individual`.
+- **Набор из нескольких сущностей:** `type: "set"` в спецификации — организации, ФЛ и ИП за один
+  прогон со связью по ОГРН; файлы `*-organizations.csv`, `*-individuals.csv`, `*-ip.csv`,
+  `*-relations.csv`; каждому участнику — свой seed (`seed + номер × 10007`).
+- **Скрипт отката `*-teardown.sql`:** `DELETE` по строкам этого прогона в порядке, обратном загрузке
+  (люди → организации), пачками по 200 ключей, без DDL; отключается полем `"teardown": false` в спецификации.
+
+### Changed
+- Поток `Random` для карт отдельный от потока реквизитов: новые поля больше не сдвигают эталоны
+  и пулы секретных слов.
 
 ## [0.4.1] — 2026-11-14
 
@@ -20,9 +41,7 @@
 
 ## [0.4.0] — 2026-11-14
 
-Планируется: `--format xlsx` без зависимостей, разложение `core/export` по слоям,
-`@Mixin`-опции CLI, README → `docs/*`.
-Полный список — [`docs/ROADMAP-0.4.0.md`](docs/ROADMAP-0.4.0.md).
+Полный список — раздел `### Added` этого релиза ниже.
 
 Версия также закрывает дефекты 0.3.0, которые не выпускались отдельным хотфиксом.
 
@@ -313,9 +332,10 @@
 | Исходники | `git clone` → `./gradlew build` |
 
 Требования: JDK 21. Справочник `data/ED807.xml` обязателен — `validum fetch-bik -o data/ED807.xml`.
-Порядок выпуска версии — `docs/RELEASING.md`.
+Порядок выпуска версии — `CONTRIBUTING.md`.
 
-[Unreleased]: https://github.com/Validum-Tech/validum/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/Validum-Tech/validum/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Validum-Tech/validum/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Validum-Tech/validum/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Validum-Tech/validum/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Validum-Tech/validum/compare/v0.2.0...v0.3.0

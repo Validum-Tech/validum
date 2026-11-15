@@ -27,12 +27,13 @@ public final class Coverage {
     "fullName", "gender", "birthDate", "age", "inn", "snils",
     "passportSeries", "passportNumber", "passportIssuedAt", "passportIssuer",
     "organizationName", "organizationType", "ogrn", "ogrnip", "kpp", "okpo",
-    "bankBik", "account", "address", "okved", "asOf");
+    "bankBik", "account", "cardPan", "address", "okved", "asOf");
 
   /** Есть ли публичная проверка контрольной суммы у поля. */
   public static boolean isChecked(String field) {
     return switch (field) {
-      case "inn", "snils", "ogrn", "ogrnip", "account", "kpp", "okpo", "bankBik" -> true;
+      case "inn", "snils", "ogrn", "ogrnip", "account", "kpp", "okpo", "bankBik",
+           "cardPan" -> true;
       default -> false;
     };
   }
@@ -56,8 +57,28 @@ public final class Coverage {
       // BikValidator требует справочник; здесь проверяем только формат (9 цифр).
       case "bankBik" -> value.matches("\\d{9}");
       case "account" -> AccountValidator.isValidAuto(value, bankOf(row));
+      // Карта «Мир»: 16 цифр, BIN 220000–220499 и контрольная цифра по алгоритму Луна.
+      case "cardPan" -> value.matches("220\\d{13}") && luhnValid(value);
       default -> null;
     };
+  }
+
+  /** Алгоритм Луна — тот же, что в {@link ru.validum.core.card.MirCard#luhnValid()}. */
+  private static boolean luhnValid(String pan) {
+    int sum = 0;
+    boolean doubleDigit = false;
+    for (int i = pan.length() - 1; i >= 0; i--) {
+      int digit = pan.charAt(i) - '0';
+      if (doubleDigit) {
+        digit *= 2;
+        if (digit > 9) {
+          digit -= 9;
+        }
+      }
+      sum += digit;
+      doubleDigit = !doubleDigit;
+    }
+    return sum % 10 == 0;
   }
 
   private static String bankOf(Map<String, String> row) {

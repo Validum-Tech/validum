@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import ru.validum.core.export.CsvExporter;
+import ru.validum.core.export.NestedWriter;
 import ru.validum.core.sql.SqlDialect;
 import ru.validum.core.sql.SqlExporter;
 
@@ -48,14 +49,25 @@ public final class OutputWriter {
   }
 
   public void write(List<Map<String, String>> rows, Long seed) throws IOException {
+    if (format == OutputFormat.JSON_NESTED) {
+      throw new IllegalStateException(
+        "json-nested собирается из профилей: используйте writeNested(...)");
+    }
     String content = switch (format) {
       case JSON -> toJsonWrapper(rows, seed);
       case JSON_ARRAY -> JSON.writeValueAsString(rows);
       case CSV -> CsvExporter.toCsv(rows);
       case CSV_SEMICOLON -> CsvExporter.toCsv(rows, ';', true);
       case SQL -> sqlWithHeader(rows, seed);
+      case JSON_NESTED -> throw new IllegalStateException("json-nested пишется через writeNested");
     };
     writeContent(content);
+  }
+
+  /** Вложенный JSON: структура профилей, а не плоских строк. */
+  public void writeNested(List<ru.validum.core.profile.IndividualProfile> profiles, Long seed)
+      throws IOException {
+    writeContent(NestedWriter.toJson(profiles, seed));
   }
 
   private String sqlWithHeader(List<Map<String, String>> rows, Long seed) {

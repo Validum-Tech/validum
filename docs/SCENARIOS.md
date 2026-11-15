@@ -270,7 +270,7 @@ POST /api/v1/generate/organization
 
 **P3.3:** `bik` (`@Pattern("\\d{9}")`) — опциональное поле. Если задан — банк берётся из справочника. Не найден → 400 `{"error":"invalid_argument","message":"..."}`.
 
-### 4.2 REST — Батчи (P1.2 + P3.3)
+### 4.2 REST — Пакетные вызовы (P1.2 + P3.3)
 
 ```
 POST /api/v1/generate/{individual,ip,organization}/batch
@@ -278,7 +278,7 @@ POST /api/v1/generate/{individual,ip,organization}/batch
      → { count, seed, profiles: [ ... ] }
 ```
 
-**P3.3:** `bik` в `IndividualBatchRequest` и `IpBatchRequest` — применяется ко всем профилям в пакете.
+**P3.3:** `bik` в `IndividualBatchRequest` и `IpBatchRequest` — применяется ко всем профилям в батче.
 
 ### 4.3 REST — Экспорт (P1.4 + P3.1a)
 
@@ -557,7 +557,7 @@ validum validate <type> <value>   → exit 0 / 1, JSON в stdout
 | P0.1 | ФИО (3.8 млн) | ✅ |
 | P0.2 | Адреса (КЛАДР, 16 регионов) | ✅ |
 | P0.3 | Email / SW / Manager | ✅ |
-| P1.2 | Batch (3 эндпоинта) | ✅ |
+| P1.2 | Пакетная генерация (3 эндпоинта) | ✅ |
 | P1.3 | Validation API (6 эндпоинтов) | ✅ |
 | P1.4 | Экспорт (CSV / JSON Array) | ✅ |
 | P2.2 | 7 ОПФ ЮЛ | ✅ |
@@ -622,7 +622,7 @@ validum validate <type> <value>   → exit 0 / 1, JSON в stdout
 | 26 | Почему отдельный `/validate/ogrnip`? | Не смешивать с ОГРН ЮЛ (P2.3) |
 | 27 | Почему ОКПО автоопределяет тип? | 8 → ЮЛ, 10 → ИП (P2.3) |
 | 28 | Что нового в КПП? | Все 4 группы ≠ 0 (P2.3) |
-| 29 | Что нового в CLI? | 5 команд, 8 валидаторов, `--format`, exit 0/1 (P3.1b) |
+| 29 | Что нового в CLI? | 10 команд, 8 валидаторов, `--format`, exit 0/1 (P3.1b) |
 | 30 | CLI JSON — 1:1 REST? | Нет, плоский (P3.1b) |
 | 31 | Как `fetch-bik` в банковском контуре? | `--offline` — инструкция, exit 0 (P3.1b) |
 | 32 | Где `CsvExporter`? | В core (P3.1a). Используется API, CLI, Allure |
@@ -678,6 +678,6 @@ REST (`GET/POST /api/v1/scenarios`), CLI (`validum scenarios`, `generate`) и Ja
 
 ---
 
-**Validum** — данные, которые проходят валидацию. **769 тестов. REST API + CLI + Java-библиотека + Allure.**
-Каскады, батчи, валидация (8 типов), счета по 809-П (12 типов), ДУЛ (11 видов), 9 КУС-сценариев,
+**Validum** — данные, которые проходят валидацию. **906 тестов. REST API + CLI + Java-библиотека + Allure.**
+Каскады, пакетные вызовы, валидация (8 типов), счета по 809-П (12 типов), ДУЛ (11 видов), 9 КУС-сценариев,
 CSV в трёх режимах, экспорт ED807/ED808, Docker. **P0.1–P0.3, P1.2–P1.4, P2.2, P2.3, P3.1–P3.3, P4.1 закрыты.**

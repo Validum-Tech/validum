@@ -88,7 +88,7 @@ validum/
 - REST API + Swagger UI + Actuator + Docker
 - Каскадные дефолты, флаги, ЮЛ/ИП
 - **P0.1–P0.3** — ФИО (3.8 млн), адреса (320 / 16), email/слова/менеджеры
-- **P1.2–P1.4** — batch, validation, экспорт
+- **P1.2–P1.4** — батчный, validation, экспорт
 - **P2.2–P2.3** — 7 ОПФ, ОКПО/ОГРНИП, расширенный КПП
 - **P3.1** — CLI + CSV в core
 - **P3.2** — Allure Extension
@@ -100,7 +100,7 @@ validum/
 
 ### 📅 Отложено / Backlog
 
-- **P1.1** — первая публикация в Maven Central (код готов, нужны секреты — см. `docs/RELEASING.md`)
+- **P1.1** — первая публикация в Maven Central (код готов, нужны секреты — см. `CONTRIBUTING.md`)
 - **P2.1** — Транзакции
 - **P3.4** — Mock API по OpenAPI (3–5 дней)
 - **P4.2–P4.4** — Иностранные паспорта, Web UI, ML-датасеты
@@ -113,12 +113,12 @@ validum/
 
 | Что | Где взять |
 |---|---|
-| Fat jar `validum.jar` (+ `.sha256`) | [GitHub Releases](https://github.com/Validum-Tech/validum/releases) |
+| Fat JAR `validum.jar` (+ `.sha256`) | [GitHub Releases](https://github.com/Validum-Tech/validum/releases) |
 | Java-библиотеки (`validum-core`, `validum-allure`, …) | Maven Central: `io.github.validum-tech:*:0.3.1` (с первого релиза в Central; подключать репозиторий не нужно) |
 | Контейнер API | `docker compose up` локально; Docker Hub — после 0.2 |
 | Исходники | `git clone` → `./gradlew build` |
 
-Как выпускается версия (тег, секреты, Maven Central) — [`docs/RELEASING.md`](RELEASING.md).
+Как выпускается версия (тег, CI, Maven Central) — [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 Что мы гарантируем потребителю (JDK, зависимости, контракт вывода, ломающие изменения) — [`docs/COMPATIBILITY.md`](COMPATIBILITY.md).
 
 ---
@@ -137,10 +137,10 @@ validum/
 
 1. Форк → ветка `feature/my-feature`
 2. Тесты **до** реализации
-3. `./gradlew build` — все 860 зелёные, покрытие не падает
+3. `./gradlew build` — все 906 зелёные, покрытие не падает
 4. PR — CI прогонит сборку на Linux и Windows
 
-Подробности и чек-лист — [`CONTRIBUTING.md`](CONTRIBUTING.md).
-Уязвимости — не в Issues, а на `security@validum.tech` ([`SECURITY.md`](SECURITY.md)).
+Подробности и чек-лист — [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+Уязвимости — не в Issues, а на `security@validum.tech` ([`SECURITY.md`](../SECURITY.md)).
 
 ---

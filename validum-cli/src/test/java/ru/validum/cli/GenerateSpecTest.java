@@ -79,7 +79,7 @@ class GenerateSpecTest {
     assertThat(bytes[0] & 0xFF).isEqualTo(0xEF);
     assertThat(bytes[1] & 0xFF).isEqualTo(0xBB);
     assertThat(bytes[2] & 0xFF).isEqualTo(0xBF);
-    assertThat(Files.readString(out)).startsWith("\uFEFFИдентификатор;ФИО;");
+    assertThat(Files.readString(out)).startsWith("\uFEFFИдентификатор;ОГРН работодателя;ФИО;");
   }
 
   @Test

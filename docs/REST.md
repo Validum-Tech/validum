@@ -1,6 +1,6 @@
 # REST API
 
-Spring Boot-сервис: batch-эндпоинты, fill, validate, scenarios, export.
+Spring Boot-сервис: пакетные эндпоинты, fill, validate, scenarios, export.
 
 ## 🎯 Четыре способа использовать
 
@@ -9,7 +9,7 @@ Spring Boot-сервис: batch-эндпоинты, fill, validate, scenarios, e
 | **REST API** | Автотесты (JUnit + REST Assured), Swagger UI | `docker compose up` → `POST /api/v1/generate/...` |
 | **CLI** | Скрипты сетапа, CI-пайплайны, «100 профилей в CSV» | `java -jar validum.jar generate individual --count 100 --format csv -o profiles.csv` |
 | **Allure Extension** | JUnit 5: attach профиля в Allure-отчёт | `@ValidumSeed(42)` / `@ValidumGenerate(...)` |
-| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.4.1</dependency>` (Maven Central) |
+| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.5.0</dependency>` (Maven Central) |
 
 ---
 
@@ -188,7 +188,7 @@ java -jar validum.jar coverage --file clients.csv
 ```
 
 ```
-# validum 0.4.1 coverage · file=clients.csv · rows=100
+# validum 0.5.0 coverage · file=clients.csv · rows=100
 
 поле               заполнено  различных  невалидных
 --------------------------------------------------
@@ -213,7 +213,7 @@ account                 100% (100/100)        100          0
 
 ### ✂️ Только нужные колонки
 
-Полный профиль ФЛ — 64 колонки, и в большинстве сценариев столько не нужно. `--fields` оставляет
+Полный профиль ФЛ — больше 60 колонок, и в большинстве сценариев столько не нужно. `--fields` оставляет
 только запрошенные, не меняя остального вывода:
 
 ```bash

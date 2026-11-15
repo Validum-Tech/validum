@@ -87,8 +87,13 @@ class ProfileFlattenersTest {
 
       List<String> keys = List.copyOf(row.keySet());
       assertThat(keys.get(0)).isEqualTo("personId");
-      assertThat(keys.get(1)).isEqualTo("fullName");
-      assertThat(keys.get(keys.size() - 5)).isEqualTo("account");
+      assertThat(keys.get(1)).isEqualTo("employerOgrn");
+      assertThat(keys.get(2)).isEqualTo("fullName");
+      assertThat(keys.get(keys.size() - 9)).isEqualTo("account");
+      assertThat(keys.get(keys.size() - 8)).isEqualTo("cardPan");
+      assertThat(keys.get(keys.size() - 7)).isEqualTo("cardExpiry");
+      assertThat(keys.get(keys.size() - 6)).isEqualTo("cardOutcome");
+      assertThat(keys.get(keys.size() - 5)).isEqualTo("cardCount");
       assertThat(keys.get(keys.size() - 4)).isEqualTo("documents");
       assertThat(keys.get(keys.size() - 3)).isEqualTo("isResident");
       assertThat(keys.get(keys.size() - 2)).isEqualTo("citizenship");
@@ -139,7 +144,8 @@ class ProfileFlattenersTest {
 
       assertThat(keys.get(0)).isEqualTo("ogrnip");
       assertThat(keys.get(1)).isEqualTo("personId");
-      assertThat(keys.get(2)).isEqualTo("fullName");
+      assertThat(keys.get(2)).isEqualTo("employerOgrn");
+      assertThat(keys.get(3)).isEqualTo("fullName");
       assertThat(row.get("ogrnip")).hasSize(15);
       assertThat(row.get("inn")).isEqualTo(base.inn());
     }

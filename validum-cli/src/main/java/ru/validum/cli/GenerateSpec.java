@@ -108,7 +108,7 @@ public record GenerateSpec(
     String type = normalizeType(text(merged, "type"));
     if (type == null) {
       throw new IllegalArgumentException(
-        "Обязательное поле \"type\": individual | ip | organization | documents");
+        "Обязательное поле \"type\": individual | ip | organization | documents | set");
     }
 
     Integer count = integer(merged, "count");
@@ -190,9 +190,10 @@ public record GenerateSpec(
       case "ip", "ип", "предприниматель" -> "ip";
       case "organization", "ul", "юл", "organizationprofile", "org" -> "organization";
       case "documents", "document", "документы", "doc" -> "documents";
+      case "set", "набор", "наборы" -> "set";
       default -> throw new IllegalArgumentException(
         "Неизвестный \"type\": \"" + raw
-          + "\". Допустимо: individual | ip | organization | documents");
+          + "\". Допустимо: individual | ip | organization | documents | set");
     };
   }
 

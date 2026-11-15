@@ -99,6 +99,7 @@ public final class DescribeCommand implements Callable<Integer> {
     line("Возраст", row.get("age"));
     line("Дата расчёта", row.get("asOf"));
     line("Семейное положение", row.get("familyStatus"));
+    line("Работодатель (ОГРН)", row.get("employerOgrn"));
 
     section("Проверки");
     line("ИНН", row.get("inn"), check(InnValidator.isValid(row.get("inn"))));
@@ -147,6 +148,8 @@ public final class DescribeCommand implements Callable<Integer> {
     line("БИК", bik);
     line("Корсчёт", row.get("bankCorrAccount"));
     line("Счёт", account);
+    line("Карта «Мир»", cardText(row), row.get("cardExpiry"));
+    line("Исход по карте", row.get("cardOutcome"));
     line("Пакет услуг", row.get("accountPackage"));
     line("Персональный менеджер", row.get("personalManager"));
 
@@ -183,6 +186,22 @@ public final class DescribeCommand implements Callable<Integer> {
   }
 
   /** «регион, индекс» — то, что видно в CSV отдельными колонками. */
+  /** Номер карты с группировкой по четыре цифры; пустая строка, если карты нет. */
+  private static String cardText(Map<String, String> row) {
+    String pan = row.get("cardPan");
+    if (pan == null || pan.isBlank()) {
+      return "";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < pan.length(); i++) {
+      if (i > 0 && i % 4 == 0) {
+        sb.append(' ');
+      }
+      sb.append(pan.charAt(i));
+    }
+    return sb.toString();
+  }
+
   private static String addressNote(Map<String, String> row, String prefix) {
     String region = row.get(prefix + "Region");
     String postal = row.get(prefix + "PostalCode");

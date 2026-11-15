@@ -2,6 +2,7 @@ package ru.validum.core.profile;
 
 import java.time.LocalDate;
 import java.util.List;
+import ru.validum.core.card.MirCard;
 import ru.validum.core.address.Address;
 import ru.validum.core.bank.Bank;
 import ru.validum.core.contact.Contact;
@@ -88,7 +89,20 @@ public record IndividualProfile(
    * (см. {@link ru.validum.core.common.PersonIds}). Пусто у профилей, собранных без seed —
    * например, при импорте CSV без колонки {@code personId}.
    */
-  String personId) {
+  String personId,
+
+  /**
+   * ОГРН работодателя — юридического лица, где клиент работает. Пусто, если клиент не трудоустроен
+   * или работодатель не задан (например, при импорте CSV без этой колонки). Связь односторонняя:
+   * профиль ЮЛ про своих сотрудников ничего не знает, набор строится в CLI.
+   */
+  String employerOgrn,
+
+  /**
+   * Карты «Мир» клиента: {@code --cards N} в CLI, по умолчанию одна. Пустой список — карт нет
+   * (например, при импорте CSV без этой колонки или при {@code --cards 0}).
+   */
+  List<MirCard> cards) {
 
   /** Полное ФИО одной строкой. */
   public String fullName() {
@@ -144,6 +158,8 @@ public record IndividualProfile(
       account,
       documents,
       asOf,
-      personId);
+      personId,
+      employerOgrn,
+      cards);
   }
 }

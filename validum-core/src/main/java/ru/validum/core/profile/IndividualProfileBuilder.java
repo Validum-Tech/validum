@@ -57,6 +57,8 @@ public final class IndividualProfileBuilder {
   List<DocumentType> documentTypes = List.of();
   boolean autoDocuments;
   LocalDate asOf;
+  String employerOgrn;
+  int cardCount = 1;
 
   IndividualProfileBuilder() {}
 
@@ -79,6 +81,29 @@ public final class IndividualProfileBuilder {
    */
   public IndividualProfileBuilder asOf(LocalDate date) {
     this.asOf = date;
+    return this;
+  }
+
+  /**
+   * ОГРН работодателя (13 цифр) — юридического лица, где работает клиент.
+   *
+   * <p>Значение не проверяется: генератор не знает профиль ЮЛ, а набор в CLI связывает профили
+   * сам. Пустое значение — клиент без работодателя.
+   */
+  public IndividualProfileBuilder employer(String ogrn) {
+    this.employerOgrn = ogrn;
+    return this;
+  }
+
+  /**
+   * Сколько карт «Мир» выдать клиенту: 0 — без карт, 1 — одна карта в профиле (по умолчанию),
+   * больше — столько же строк в отдельной таблице карт.
+   */
+  public IndividualProfileBuilder cards(int count) {
+    if (count < 0) {
+      throw new IllegalArgumentException("Число карт не может быть отрицательным: " + count);
+    }
+    this.cardCount = count;
     return this;
   }
 
