@@ -1,7 +1,7 @@
 plugins {
     java
     jacoco
-    id("org.springframework.boot") version "3.5.7"
+    id("org.springframework.boot") version "4.1.2"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -10,13 +10,18 @@ plugins {
 dependencies {
     implementation(project(":validum-core"))
 
-    implementation("org.springframework.boot:spring-boot-starter-web")
+    // Boot 4: spring-boot-starter-web — deprecated, замена spring-boot-starter-webmvc
+    // (см. Spring Boot 4.0 Migration Guide, раздел «Deprecated Starters»).
+    implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
+    // springdoc 2.x собран против Boot 3; для Boot 4 нужна ветка 3.x.
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // Тестовый стартер технологии: тянет spring-boot-starter-test транзитивно,
+    // но добавляет MockMvc/автоконфигурацию webmvc из модульной поставки Boot 4.
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {

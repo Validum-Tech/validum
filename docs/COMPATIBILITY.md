@@ -10,9 +10,9 @@ CLI и REST. Всё, чего здесь нет, — не гарантия.
 | `validum-core` | Java 17 | JDK 17+ |
 | `validum-allure` | Java 17 | JDK 17+, JUnit 5 |
 | `validum-cli` (fat jar) | Java 17 | JDK 17+ |
-| `validum-api` (REST-сервис) | Java 21 | JDK 21 (требование Spring Boot 3.5) |
+| `validum-api` (REST-сервис) | Java 17 | JDK 17+ (Spring Boot 4 требует 17+) |
 
-Собираем на toolchain 21, но для библиотек включён `--release 17`: используем только API,
+Собираем на toolchain 21, но для всех модулей включён `--release 17`: используем только API,
 доступный в 17. Проверяется в CI отдельной полосой на JDK 17 (`-Pvalidum.javaToolchain=17`),
 поэтому «работает на 17» — не обещание, а проверенная сборкой вещь.
 

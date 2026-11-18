@@ -1,7 +1,7 @@
 plugins {
     application
     jacoco
-    id("com.gradleup.shadow") version "8.3.7"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 // toolchain, release, UTF-8, -Xlint и validum.bik.file — в корневом build.gradle.kts (subprojects).
@@ -17,12 +17,12 @@ application {
 dependencies {
     implementation(project(":validum-core"))
     implementation("info.picocli:picocli:4.7.6")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.23.0")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.23.0")
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.assertj:assertj-core:3.26.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
+    testImplementation("org.assertj:assertj-core:3.27.7")
 }
 
 // --- Покрытие (jacoco) -------------------------------------------------------

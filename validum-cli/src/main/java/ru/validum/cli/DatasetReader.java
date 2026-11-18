@@ -80,7 +80,7 @@ final class DatasetReader {
     List<Map<String, String>> rows = new ArrayList<>();
     for (JsonNode item : items) {
       Map<String, String> row = new LinkedHashMap<>();
-      item.fields().forEachRemaining(entry -> row.put(entry.getKey(), text(entry.getValue())));
+      item.properties().forEach(entry -> row.put(entry.getKey(), text(entry.getValue())));
       rows.add(row);
     }
     return rows;

@@ -1,10 +1,11 @@
 import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
+import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
 
 plugins {
     // Публикация библиотек в Maven Central (Central Portal).
     // Плагин объявлен здесь, применяется только к модулям-библиотекам (см. subprojects).
-    id("com.vanniktech.maven.publish") version "0.30.0" apply false
+    id("com.vanniktech.maven.publish") version "0.37.0" apply false
 }
 
 allprojects {
@@ -22,7 +23,7 @@ allprojects {
 // Публикуются две библиотеки: validum-core и validum-allure. validum-cli и validum-api —
 // приложения, они уходят в GitHub Release и в реестр не попадают.
 //
-// Куда: Maven Central через Central Portal (vanniktech/maven-publish-plugin, SonatypeHost.CENTRAL_PORTAL).
+// Куда: Maven Central через Central Portal (vanniktech/maven-publish-plugin 0.37, publishToMavenCentral).
 // Что нужно для боевой публикации:
 //   CENTRAL_USERNAME / CENTRAL_TOKEN — токен Central Portal (CI: секреты);
 //   signingInMemoryKey / signingInMemoryKeyPassword — PGP-ключ и его пароль
@@ -34,10 +35,17 @@ allprojects {
 subprojects {
     // ---------------------------------------------------------------------------------------
     // Общая конфигурация компиляции и тестов — одна копия вместо четырёх модульных.
-    // Отличается только «пол» байткода: библиотеки (core/allure) и CLI обещают Java 17,
-    // REST-сервис собирается под 21 (его поднимает Spring Boot 3.5).
+    // Всё обещает Java 17: библиотеки (core/allure), CLI и REST-сервис.
+    // Spring Boot 4 требует Java 17+, поэтому «пол» у API больше не отличается.
     // ---------------------------------------------------------------------------------------
-    val moduleRelease = if (name == "validum-api") 21 else 17
+    val moduleRelease = 17
+
+    plugins.withId("jacoco") {
+        // JaCoCo 0.8.16: поддержка class-file 65+ и Java 25, актуальные фиксы агента.
+        extensions.configure<JacocoPluginExtension> {
+            toolVersion = "0.8.16"
+        }
+    }
 
     plugins.withId("java") {
         extensions.configure<JavaPluginExtension> {
@@ -55,10 +63,8 @@ subprojects {
         tasks.withType<JavaCompile>().configureEach {
             options.encoding = "UTF-8"
             options.compilerArgs.addAll(listOf("-Xlint:all", "-parameters"))
-            if (name != "validum-api") {
-                // Контракт совместимости: байткод Java 17 (major 61) при сборке на 21.
-                options.release.set(17)
-            }
+            // Контракт совместимости: байткод Java 17 (major 61) при сборке на 21.
+            options.release.set(17)
         }
 
         tasks.withType<Test>().configureEach {
@@ -96,7 +102,9 @@ subprojects {
                     .any { !System.getenv(it).isNullOrBlank() }
 
         extensions.configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
-            publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL, true)
+            // С 0.34 SonatypeHost удалён из DSL: без аргумента — публикация через Central Portal,
+            // `automaticRelease = true` — авторелиз после валидации.
+            publishToMavenCentral(automaticRelease = true)
             if (signingReady) {
                 signAllPublications()
             }
