@@ -155,9 +155,10 @@ jobs:
 
       # C10: полоса совместимости «порог Java 17».
       # toolchain 17 + release 17 проверяют именно то, что обещано потребителю на 17.
-      # validum-api сюда не входит: Spring Boot 3.5 требует 21 (см. COMPATIBILITY).
+      # validum-api входит с 0.6.0: Spring Boot 4 требует Java 17+, поэтому сервис
+      # больше не выпадает из «порога» (см. COMPATIBILITY).
       - name: Build and test on JDK 17
-        run: ./gradlew :validum-core:build :validum-allure:build :validum-cli:build -Pvalidum.javaToolchain=17 --no-daemon
+        run: ./gradlew :validum-core:build :validum-allure:build :validum-cli:build :validum-api:build -Pvalidum.javaToolchain=17 --no-daemon
 
   windows:
     name: Build & Test (Windows)

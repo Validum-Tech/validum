@@ -2,7 +2,19 @@
 
 Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии — [SemVer](https://semver.org/lang/ru/).
 
-## [Unreleased] — 0.6.0
+## [0.6.0] — 2026-11-18
+
+### Changed
+- **Тулчейн:** Gradle 8.14 → **9.9.1**, `com.gradleup.shadow` 8.3.7 → **9.6.1**,
+  Spring Boot 3.5.7 → **4.1.2**, springdoc-openapi 2.6.0 → **3.2.0**,
+  JUnit 5.11.3 → **6.1.3** (в тестах продукта; `validum-allure` остаётся на JUnit 5 — библиотека
+  не навязывает потребителю шестую версию), Jackson 2.18.2 → **2.23.0**, JaCoCo **0.8.16**,
+  AssertJ 3.26.3 → **3.27.7** (в 3.27.7 закрыта XXE-уязвимость в `isXmlEqualTo`, CVE-2026-24400).
+- **`com.vanniktech.maven.publish` 0.30.0 → 0.37.0:** с 0.34.0 из DSL убран `SonatypeHost`,
+  поэтому публикация вызывается как `publishToMavenCentral(automaticRelease = true)`;
+  минимумы плагина — JDK 17 и Gradle 9 (проект уже на них).
+- **`validum-api` перешёл на Java 17** (было 21): Spring Boot 4 требует 17+, поэтому сервис
+  больше не выпадает из «порога совместимости». CI-полоса JDK 17 теперь собирает и его.
 
 ## [0.5.0] — 2026-11-15
 

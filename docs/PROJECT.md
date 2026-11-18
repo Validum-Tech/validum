@@ -7,7 +7,7 @@
 ```
 ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
 │  validum-api         │  │  validum-cli         │  │  validum-allure      │
-│  (Spring Boot 3.5)   │  │  (Picocli, ~15 МБ)   │  │  (JUnit 5 Extension) │
+│  (Spring Boot 4)   │  │  (Picocli, ~15 МБ)   │  │  (JUnit 5 Extension) │
 │  19 REST-эндпоинтов  │  │  10 команд            │  │  @ValidumSeed        │
 └──────────┬───────────┘  └──────────┬───────────┘  └──────────┬───────────┘
            │                         │                         │
@@ -126,7 +126,7 @@ validum/
 ## 🤝 Для контрибьюторов
 
 - **JDK 21** для сборки (toolchain), байткод CLI/библиотек — 17
-- Java 21 Records, immutable, каскадные дефолты
+- Java 17 Records, immutable, каскадные дефолты
 - Фасады только для 3+ связанных полей
 - Тесты: `src/test/`, имя файла = имя класса, `@DisplayName` на русском
 - Core — zero-dep, CLI и Allure — без Spring

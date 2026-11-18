@@ -39,7 +39,7 @@ Validum генерирует **синтетические, но валидные
 
 ## 1. Установка
 
-Нужен Java 17+ (если нужен REST-сервис — Java 21). Скачайте `validum-<версия>.jar` из
+Нужен Java 17+ (столько же требует REST-сервис на Spring Boot 4). Скачайте `validum-<версия>.jar` из
 [GitHub Releases](https://github.com/Validum-Tech/validum/releases) или соберите сами:
 
 ```bash
