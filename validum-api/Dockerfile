@@ -22,7 +22,9 @@ COPY validum-api/src ./validum-api/src
 RUN gradle :validum-api:bootJar -x test --no-daemon
 
 # ===== Stage 2: Runtime =====
-FROM eclipse-temurin:17-jre-alpine
+# Мультиарх: alpine-образ Temurin есть только под amd64, поэтому база — Liberica
+# (Alpine + OpenJRE 17, amd64 и arm64). Busybox-утилиты (addgroup/adduser/wget) на месте.
+FROM bellsoft/liberica-openjre-alpine:17
 
 WORKDIR /app
 
