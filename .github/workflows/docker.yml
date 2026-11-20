@@ -98,6 +98,10 @@ jobs:
           push: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.push) }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # На PR образа нет в локальном docker без load — buildx по умолчанию
+          # оставляет его только в кеше, и следующий шаг «Проверка образа» падает
+          # на `docker run ... :sha-xxxx` («Unable to find image locally»).
+          load: ${{ github.event_name == 'pull_request' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
