@@ -66,7 +66,7 @@ java -jar validum.jar version
 ```powershell
 java -jar validum.jar fetch-bik -o data/ED807.xml
 # Скачано: data/ED807.xml, <размер> байт
-# Справочник: около 1,4 тыс. участников, из них около 370 действующих банков
+# Справочник: 1 360 участников, из них 368 действующих банков
 ```
 
 Проверить, что справочник читается:
@@ -268,7 +268,7 @@ java -jar validum.jar coverage --file out/bad.csv
 |---|---|
 | Все команды и флаги | [CLI](CLI.md) |
 | HTTP-эндпоинты и коды ошибок | [REST](REST.md) |
-| JUnit 5 + Allure, Java-библиотека | [INTEGRATIONS](INTEGRATIONS.md) |
+| JUnit 5/6 + Allure, Java-библиотека | [INTEGRATIONS](INTEGRATIONS.md) |
 | Готовые сценарии «под задачу» | [recipes](recipes/README.md) |
 | Что считается совместимым изменением | [COMPATIBILITY](COMPATIBILITY.md) |
 | Типы клиентов, каскады, поля профиля | [SCENARIOS](SCENARIOS.md) |

@@ -195,6 +195,22 @@ java -jar validum.jar generate individual --seed 42 --count 3 --cards 2 --format
 java -jar validum.jar generate individual --seed 42 --format json-nested -o out/clients.json
 ```
 
+### Уникальность ФИО (`--unique-name`)
+
+По умолчанию ФИО могут повторяться: пул ограничен справочниками (фамилии × имена × отчества,
+сейчас **12 105 730** вариантов на оба пола). Если нужен набор без единого повтора ФИО:
+
+```powershell
+java -jar validum.jar generate individual --seed 42 --count 1000 --unique-name --format csv -o clients.csv
+```
+
+- Требует `--seed`: без него набор невоспроизводим.
+- Не совмещается с `--unique` (уникальность ИНН) — выберите одно.
+- При исчерпании пула CLI выходит с кодом 2 и пишет, сколько уникальных значений успел выдать.
+
+Флаг `--unique` (ИНН) работает так же, но следит за ИНН; `--unique-pool` позволяет показать честный
+отказ на маленьком пуле: `--unique --unique-pool 10 -n 11`.
+
 ### Набор из нескольких сущностей (`type: "set"`)
 
 Один прогон создаёт организации, людей и ИП **со связью «человек → работодатель»** — то, что нужно,
@@ -400,7 +416,7 @@ Expand-Archive -Path data\newbik.zip -DestinationPath data\
 Rename-Item data\*.xml data\ED807.xml
 ```
 
-**Парсер:** WINDOWS-1251, namespace `urn:cbr-ru:ed:v2.0`, фильтры `PtType="20"`, `PSAC`, `CRSA`, `ACAC`. Из ~1,4 тыс. участников — **около 370 действующих банков** (все участники — `participants --file`).
+**Парсер:** WINDOWS-1251, namespace `urn:cbr-ru:ed:v2.0`, фильтры `PtType="20"`, `PSAC`, `CRSA`, `ACAC`. Из 1 360 участников — **около 370 действующих банков** на выгрузке из репозитория (точное число зависит от версии ED807; все участники — `participants --file`).
 
 ### Где ищется файл
 

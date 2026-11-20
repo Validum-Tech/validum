@@ -1,0 +1,108 @@
+name: Docker
+
+# Образ validum-api в Docker Hub: docker.io/pavelwhite64/validum-api
+# (организации в Docker Hub доступны только на платных планах — берём личный namespace)
+#
+# Триггеры:
+#   - тег v* — собираем и пушим (latest + версия + короткий sha)
+#   - ручной запуск — собираем и пушим версию из gradle.properties
+#   - pull request — только сборка, без пуша (проверяем, что Dockerfile живой)
+#
+# Секреты (Settings → Secrets and variables → Actions, репозиторий validum):
+#   DOCKERHUB_USERNAME — логин Docker Hub (владелец организации validum)
+#   DOCKERHUB_TOKEN    — access token с правами Read & Write (не пароль)
+
+on:
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    paths:
+      - "validum-api/**"
+      - "validum-core/**"
+      - "docker-compose.yml"
+      - ".github/workflows/docker.yml"
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Пушить образ в Docker Hub"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: pavelwhite64/validum-api
+
+jobs:
+  build:
+    name: Сборка и публикация образа
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Версия продукта
+        id: version
+        run: |
+          VERSION="$(grep -E '^version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
+          if [ -n "${GITHUB_REF_NAME}" ] && [ "${GITHUB_REF_NAME#v}" != "${GITHUB_REF_NAME}" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Версия образа: $VERSION"
+
+      - name: QEMU (arm64)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Логин в Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Теги и метки
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.event_name != 'pull_request' }}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.event_name != 'pull_request' }}
+            type=sha,prefix=sha-,format=short,enable=${{ github.event_name == 'pull_request' }}
+          labels: |
+            org.opencontainers.image.title=Validum API
+            org.opencontainers.image.description=Генератор валидных тестовых данных для российского финтеха
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+
+      # На PR и ручном запуске без push — только сборка под amd64 (быстро).
+      # На теге — мультиархитектура amd64 + arm64 (Mac на Apple Silicon).
+      - name: Сборка и пуш
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: validum-api/Dockerfile
+          platforms: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          push: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.push) }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Проверка образа
+        if: github.event_name == 'pull_request'
+        run: |
+          docker run --rm --entrypoint sh "${{ env.IMAGE }}:sha-$(git rev-parse --short HEAD)" -c \
+            'echo "java: $(java -version 2>&1 | head -1)"; ls -l /app/app.jar'

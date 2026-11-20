@@ -9,7 +9,7 @@ Spring Boot-сервис: пакетные эндпоинты, fill, validate, s
 | **REST API** | Автотесты (JUnit + REST Assured), Swagger UI | `docker compose up` → `POST /api/v1/generate/...` |
 | **CLI** | Скрипты сетапа, CI-пайплайны, «100 профилей в CSV» | `java -jar validum.jar generate individual --count 100 --format csv -o profiles.csv` |
 | **Allure Extension** | JUnit 5: attach профиля в Allure-отчёт | `@ValidumSeed(42)` / `@ValidumGenerate(...)` |
-| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.5.0</dependency>` (Maven Central) |
+| **Java-библиотека** | Свой генератор поверх core | `<dependency>io.github.validum-tech:validum-core:0.7.0</dependency>` (Maven Central) |
 
 ---
 
@@ -112,12 +112,35 @@ OrganizationProfile gup = OrganizationProfileGenerator.builder()
 }
 ```
 
-### Батчи, валидация, экспорт, сценарии
+### Все эндпоинты (19)
 
-- **Батчи:** `POST /generate/{individual,ip,organization}/batch`, `count` 1–10 000, **P3.3: `bik`**.
-- **Валидация:** 8 эндпоинтов `/validate/*`.
-- **Экспорт:** `?format=json-array` / `?format=csv`.
-- **Сценарии:** `GET /scenarios`, `POST /scenarios/{name}?seed=42`.
+| Метод | Путь | Что делает |
+|---|---|---|
+| POST | `/api/v1/generate/individual` | профиль физлица (поля — выше) |
+| POST | `/api/v1/generate/ip` | профиль ИП: `seed`, `asOf`, `gender`, `age`, `region`, `categoryClient`, `accountPackage`, `terrorist`, `blocked`, `bik`, `okved` |
+| POST | `/api/v1/generate/organization` | профиль юрлица: `seed`, `asOf`, `organizationType`, `organizationName`, `region`, `okved`, `bik` |
+| POST | `/api/v1/generate/individual/batch` | 1–10 000 профилей ФЛ, `format` = `json`/`json-array`/`csv`/`csv-semicolon`, `fields` (только CSV) |
+| POST | `/api/v1/generate/ip/batch` | то же для ИП |
+| POST | `/api/v1/generate/organization/batch` | то же для ЮЛ |
+| POST | `/api/v1/fill/individual` | дозаполнение CSV: `{"rows":[{...}], "seed":42}`, до 10 000 строк; непустые ячейки не меняются |
+| GET | `/api/v1/scenarios` | каталог сценариев (9 КУС) |
+| POST | `/api/v1/scenarios/{name}?seed=42` | готовый профиль по имени сценария |
+| POST | `/api/v1/validate/inn` | `{"inn":"500100732259"}` → валиден ли (10 или 12 цифр) |
+| POST | `/api/v1/validate/snils` | `{"snils":"11223344595"}` |
+| POST | `/api/v1/validate/ogrn` | `{"ogrn":"1027700132195"}` |
+| POST | `/api/v1/validate/ogrnip` | `{"ogrnip":"304500116000157"}` |
+| POST | `/api/v1/validate/account` | `{"account":"40817810099910004312","bik":"044525225"}` — ключ по письму 515 |
+| POST | `/api/v1/validate/kpp` | `{"kpp":"773601001"}` |
+| POST | `/api/v1/validate/okpo` | `{"okpo":"12345678"}` |
+| POST | `/api/v1/validate/bik` | `{"bik":"044525225"}` |
+| GET | `/api/v1/export/ed807?type=20&limit=100` | справочник участников ЦБ, XML в windows-1251; `type` — код PtType, `limit` — сколько записей |
+| GET | `/api/v1/export/ed808?bik=044525225&seed=42` | профиль одного участника с его счетами (ED808) |
+
+Батчи: `count` от 1 до 10 000 (`@Max(10000)`), `?fields=` осмыслен только для CSV — для `json`
+и `json-array` это `400 invalid_argument` (с 0.4.1), потому что JSON отдаёт структурированный DTO.
+
+Валидаторы отвечают одинаково — `{"valid":true}` или `{"valid":false}`; для счёта учитывается БИК
+(ключ считается с условным номером подразделения).
 
 ### 🔁 Уникальность набора
 
@@ -188,7 +211,7 @@ java -jar validum.jar coverage --file clients.csv
 ```
 
 ```
-# validum 0.5.0 coverage · file=clients.csv · rows=100
+# validum 0.7.0 coverage · file=clients.csv · rows=100
 
 поле               заполнено  различных  невалидных
 --------------------------------------------------

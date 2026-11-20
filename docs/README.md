@@ -18,9 +18,9 @@
 |---|---|
 | [TUTORIAL.md](TUTORIAL.md) | сквозной проход: справочник ЦБ → набор → проверка → спецификация → негатив |
 | [QUICKSTART.md](QUICKSTART.md) | установка, сборка из исходников, тесты, Docker |
-| [CLI.md](CLI.md) | десять команд, форматы, `--unique`, `--corrupt`, `--fields`, экспорт ED807/ED808 и SQL |
+| [CLI.md](CLI.md) | десять команд, форматы, `--unique`, `--unique-name`, `--corrupt`, `--fields`, экспорт ED807/ED808 и SQL |
 | [REST.md](REST.md) | пакетные эндпоинты, `fill`, `validate`, `scenarios`, `export`, коды ошибок |
-| [INTEGRATIONS.md](INTEGRATIONS.md) | Java-библиотека (Maven Central) и расширение JUnit 5 + Allure |
+| [INTEGRATIONS.md](INTEGRATIONS.md) | Java-библиотека (Maven Central) и расширение JUnit 5/6 + Allure |
 | [SCENARIOS.md](SCENARIOS.md) | типы клиентов, фасады, каскады, поля профиля, контракт |
 | [FEATURES.md](FEATURES.md) | зачем нужен, ключевые свойства, что работает |
 | [COMPATIBILITY.md](COMPATIBILITY.md) | Java 17+, аддитивность полей, детерминизм, коды ошибок |
@@ -47,8 +47,8 @@ REST — `503 bik_source_missing`. Встроенного демо-справо�
 Без `--as-of` берётся сегодняшняя дата.
 
 **Есть Maven Central?**
-Да: `io.github.validum-tech:validum-core` и `io.github.validum-tech:validum-allure` — см.
+Да: `io.github.validum-tech:validum-core`, `validum-allure` и `validum-api` — см.
 [QUICKSTART](QUICKSTART.md).
 
 **JUnit 4 или pytest?**
-JUnit 5 — через [Allure Extension](INTEGRATIONS.md); для остальных языков — REST или CLI.
+JUnit 5/6 — через [Allure Extension](INTEGRATIONS.md); для остальных языков — REST или CLI.

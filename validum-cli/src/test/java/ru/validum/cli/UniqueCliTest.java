@@ -123,6 +123,39 @@ class UniqueCliTest {
   }
 
   @Test
+  @DisplayName("--unique-name: 300 профилей ФЛ — все ФИО разные")
+  void individualUniqueNames() throws Exception {
+    Path file = out("unique-names.json");
+    int code = run("generate", "individual", "--unique-name", "--seed", "2", "-n", "300",
+      "--format", "json-array", "-o", file.toString());
+
+    assertThat(code).isZero();
+    List<String> names = fields(file, "fullName");
+    assertThat(names).hasSize(300).doesNotHaveDuplicates();
+  }
+
+  @Test
+  @DisplayName("--unique-name без --seed → exit 2")
+  void uniqueNameRequiresSeed() {
+    int code = run("generate", "individual", "--unique-name", "-n", "5");
+
+    assertThat(code).isEqualTo(2);
+    assertThat(capturedErr.toString(StandardCharsets.UTF_8))
+      .contains("--unique-name требует --seed");
+  }
+
+  @Test
+  @DisplayName("--unique и --unique-name вместе → exit 2")
+  void uniqueAndUniqueNameAreExclusive() {
+    int code = run("generate", "individual", "--seed", "1", "-n", "5",
+      "--unique", "--unique-name");
+
+    assertThat(code).isEqualTo(2);
+    assertThat(capturedErr.toString(StandardCharsets.UTF_8))
+      .contains("взаимоисключающие");
+  }
+
+  @Test
   @DisplayName("--unique работает для ЮЛ (ОГРН)")
   void organizationUniqueOgrns() throws Exception {
     Path file = out("org.json");

@@ -1,11 +1,11 @@
 # Интеграции
 
-Java-библиотека и JUnit 5 + Allure: как подключить validum в код и в отчётность.
+Java-библиотека и JUnit 5/6 + Allure: как подключить validum в код и в отчётность.
 
 ## 🎭 Allure Extension (P3.2)
 
 ```kotlin
-testImplementation("io.github.validum-tech:validum-allure:0.5.0")
+testImplementation("io.github.validum-tech:validum-allure:0.7.0")
 ```
 
 ```java
@@ -32,6 +32,31 @@ class ClientCreationTest {
 - **Только ФЛ** (ИП/ЮЛ — P3.2b, если попросят).
 - **Без Spring.** Зависимости: `validum-core` + `allure-jupiter:2.35.3` + `junit-jupiter-api` + Jackson.
 - **Best-effort attach.** Без Allure runtime — warning в stderr, тест не падает.
+
+---
+
+## 🧩 `validum-api` из Maven Central
+
+С 0.7.0 REST-слой публикуется отдельным артефактом — если нужен не запуск сервиса, а его DTO,
+контроллеры или конфигурация внутри своего приложения:
+
+```kotlin
+implementation("io.github.validum-tech:validum-api:0.7.0")
+```
+
+Исполняемый Spring Boot jar остаётся с classifier `boot` — его берут Docker и `java -jar`:
+
+```bash
+./gradlew :validum-api:bootJar
+java -jar validum-api/build/libs/validum-api-0.7.0-boot.jar
+```
+
+Либо ничего не собирать и запустить готовый образ:
+
+```bash
+docker run -d -p 8080:8080 -v "$PWD/data:/app/data:ro" \
+  -e VALIDUM_BIK_FILE=/app/data/ED807.xml pavelwhite64/validum-api:latest
+```
 
 ---
 

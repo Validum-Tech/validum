@@ -137,7 +137,7 @@ validum/
 
 1. Форк → ветка `feature/my-feature`
 2. Тесты **до** реализации
-3. `./gradlew build` — все 906 зелёные, покрытие не падает
+3. `./gradlew build` — все 912 зелёные, покрытие не падает
 4. PR — CI прогонит сборку на Linux и Windows
 
 Подробности и чек-лист — [`CONTRIBUTING.md`](../CONTRIBUTING.md).

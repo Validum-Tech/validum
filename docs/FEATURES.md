@@ -30,7 +30,7 @@
 - **8 эндпоинтов валидации**.
 - **Экспорт** — JSON, JSON-массив, вложенный JSON, CSV (машинный и для Excel), SQL.
 - **CLI без Spring** — fat JAR на Picocli (P3.1).
-- **Allure Extension** для JUnit 5 (P3.2).
+- **Allure Extension** для JUnit 5/6 (P3.2).
 - **Явный выбор банка** — `.bik` / `.bank` (P3.3).
 
 ---
@@ -45,10 +45,12 @@
 | **Каскадные дефолты** | Задаёшь `age=16` — система сама делает несовершеннолетнего |
 | **Три типа субъектов** | ФЛ, ИП, ЮЛ (7 ОПФ) |
 | **Четыре способа использовать** | REST API · CLI · Java-библиотека · Allure Extension |
-| **Batch** | 3 endpoint'а `/batch`, до 10 000 профилей |
+| **Batch** | 3 эндпоинта `/batch`, до 10 000 профилей |
 | **Валидация** | **8 эндпоинтов** + 8 типов в CLI |
-| **Экспорт** | JSON, JSON Array, CSV с UTF-8 BOM. `CsvExporter` — в core |
-| **Явный банк (P3.3)** | `.bik` / `.bank` для ФЛ и ИП. Невалидный → 400 / exit 2 |
+| **Экспорт** | JSON, JSON Array, вложенный JSON (`json-nested`), CSV (машинный и для Excel `csv-semicolon`), SQL (PostgreSQL / Oracle / MySQL, DDL + INSERT) |
+| **Связанный набор** | `type: "set"` — организации, люди и ИП одним прогоном, связи `employerOgrn`, `*-teardown.sql` для отката |
+| **Карты «Мир»** | `--cards N` — PAN (Luhn, BIN 220000–220499), срок, исход операции, вторая таблица `*-cards.csv` |
+| **Явный банк (P3.3)** | `--bik` / `--bank-bik` для ФЛ/ИП/ЮЛ. Невалидный → 400 / exit 2 |
 | **Self-hosted** | В закрытом контуре, без интернета |
 | **Zero-dependency core** | Никаких Spring / Datafaker в ядре |
 | **CI-ready** | GitHub Actions, зелёный билд |
@@ -104,7 +106,7 @@ Fat JAR на Picocli, **без Spring** (~15 МБ вместе со справо
 
 ### Allure `validum-allure` — 21 тест (P3.2)
 
-JUnit 5 Extension. `@ValidumSeed` / `@ValidumGenerate` → плоский JSON в Allure-отчёте. Только ФЛ.
+JUnit 5/6 Extension. `@ValidumSeed` / `@ValidumGenerate` → плоский JSON в Allure-отчёте. Только ФЛ.
 
 Контрольный ключ счёта считается по схеме письма ЦБ № 515: разряды 7–9 берутся из БИК
 клиентского счёта (или «0» + 5–6 БИК подразделений БР для корреспондентских).

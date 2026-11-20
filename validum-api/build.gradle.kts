@@ -28,6 +28,20 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     workingDir = rootProject.projectDir
 }
 
+// --- Публикация в Maven Central --------------------------------------------
+// По умолчанию Boot-плагин собирает только boot-jar и отключает обычный jar.
+// Для публикации нужен библиотечный артефакт без classifier, поэтому:
+//   validum-api-<версия>.jar        — библиотека (DTO, котроллеры, конфигурация) для потребителей
+//   validum-api-<версия>-boot.jar   — исполняемый Spring Boot jar (Docker, rest-smoke, demo)
+tasks.jar {
+    enabled = true
+    archiveClassifier.set("")
+}
+
+tasks.bootJar {
+    archiveClassifier.set("boot")
+}
+
 // --- Покрытие (jacoco) -------------------------------------------------------
 tasks.jacocoTestReport {
     dependsOn(tasks.test)

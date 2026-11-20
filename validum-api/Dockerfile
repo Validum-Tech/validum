@@ -1,5 +1,5 @@
 # ===== Stage 1: Builder =====
-FROM gradle:8.14-jdk21 AS builder
+FROM gradle:9.9.1-jdk21 AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ COPY validum-api/src ./validum-api/src
 RUN gradle :validum-api:bootJar -x test --no-daemon
 
 # ===== Stage 2: Runtime =====
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ RUN addgroup -g 1000 appgroup && \
     adduser -D -u 1000 -G appgroup appuser && \
     chown -R appuser:appgroup /app
 
-COPY --from=builder /app/validum-api/build/libs/*.jar app.jar
+COPY --from=builder /app/validum-api/build/libs/*-boot.jar app.jar
 RUN chown appuser:appgroup app.jar
 
 USER appuser

@@ -132,7 +132,9 @@ jobs:
         run: |
           ./gradlew :validum-api:bootJar --no-daemon
           java -jar validum-cli/build/libs/validum.jar fetch-bik -o data/ED807.xml
-          python3 tools/rest-smoke.py --jar "$(ls validum-api/build/libs/*.jar | grep -v -- -plain | head -1)" --root "$(pwd)" --keep-log
+          BOOT_JAR="$(ls validum-api/build/libs/*-boot.jar | head -1)"
+          echo "boot jar: $BOOT_JAR"
+          python3 tools/rest-smoke.py --jar "$BOOT_JAR" --root "$(pwd)" --keep-log
 
   build-jdk17:
     name: Build & Test (JDK 17)
