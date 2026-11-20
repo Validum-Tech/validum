@@ -5,8 +5,8 @@
 [![CI](https://github.com/Validum-Tech/validum/actions/workflows/ci.yml/badge.svg)](https://github.com/Validum-Tech/validum/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://adoptium.net/)
-[![Tests](https://img.shields.io/badge/tests-906_passing-success.svg)](docs/QUICKSTART.md)
-[![Maven Central](https://img.shields.io/badge/Maven_Central-0.5.0-informational.svg)](https://central.sonatype.com/artifact/io.github.validum-tech/validum-core)
+[![Tests](https://img.shields.io/badge/tests-912_passing-success.svg)](docs/QUICKSTART.md)
+[![Maven Central](https://img.shields.io/badge/Maven_Central-0.7.0-informational.svg)](https://central.sonatype.com/artifact/io.github.validum-tech/validum-core)
 [![core](https://img.shields.io/badge/core-zero--dependency-lightgrey.svg)](docs/PROJECT.md)
 
 ИНН, СНИЛС, ОГРН/ОГРНИП, КПП, ОКПО, БИК и корсчёт из справочника ЦБ, счета по 809-П, паспорта,
@@ -39,7 +39,7 @@ Jar ещё не собран? `./gradlew :validum-cli:shadowJar` — подро�
 | [QUICKSTART](docs/QUICKSTART.md) | установка, сборка, тесты, Docker |
 | [CLI](docs/CLI.md) | все команды и флаги |
 | [REST](docs/REST.md) | HTTP-эндпоинты, форматы, коды ошибок |
-| [Интеграции](docs/INTEGRATIONS.md) | Java-библиотека, JUnit 5 + Allure |
+| [Интеграции](docs/INTEGRATIONS.md) | Java-библиотека, JUnit 5/6 + Allure |
 | [Совместимость](docs/COMPATIBILITY.md) | Java 17+, аддитивность полей, детерминизм |
 | [Рецепты](docs/recipes/README.md) | готовая команда под конкретную задачу |
 | [Возможности](docs/FEATURES.md) | зачем нужен и что работает |
@@ -51,11 +51,11 @@ Jar ещё не собран? `./gradlew :validum-cli:shadowJar` — подро�
 
 | Метрика | Значение |
 |---|---|
-| Тесты | 906: 679 core + 114 CLI + 92 API + 21 Allure, 0 падений |
+| Тесты | 912: 682 core + 117 CLI + 92 API + 21 Allure, 0 падений |
 | Модули | `core` (без зависимостей), `cli`, `api`, `allure` |
 | Поверхность | 10 команд CLI, 19 REST-эндпоинтов |
-| Справочник ЦБ | около 1,4 тыс. участников, около 370 действующих банков (зависит от выгрузки) |
-| Адреса | 90 субъектов, 98,7 тыс. населённых пунктов, ~2 млн улиц, индексы из `DOMA.DBF` |
+| Справочник ЦБ | 1 360 участников, 368 действующих банков (зависит от выгрузки) |
+| Адреса | 90 субъектов, 125,4 тыс. населённых пунктов, 1,99 млн улиц, индексы из `DOMA.DBF` |
 | ОКВЭД-2 | 3 069 позиций |
 
 ## Лицензия и контакты

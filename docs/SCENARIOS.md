@@ -485,7 +485,7 @@ String csv = CsvExporter.toCsv(IndividualProfileFlattener.flattenAll(List.of(sbe
 | Домены TEST/REALISTIC | `emails/*.txt` | 10 + 10 | — |
 | Секретные слова | `secret_words.txt` | 298 | `.secretWord(...)` |
 | Менеджеры | `managers.txt` | 1 | `.personalManager(...)` |
-| **Банки** | **`BikRegistry` / ED807** | **30 / 370** | **`.bik` / `.bank` (P3.3)** |
+| **Банки** | **`BikRegistry` / ED807** | **368** | **`.bik` / `.bank` (P3.3)** |
 
 ### 5.6 Экспортные поля (CSV, плоский JSON CLI, Allure attachment)
 
@@ -678,6 +678,6 @@ REST (`GET/POST /api/v1/scenarios`), CLI (`validum scenarios`, `generate`) и Ja
 
 ---
 
-**Validum** — данные, которые проходят валидацию. **906 тестов. REST API + CLI + Java-библиотека + Allure.**
+**Validum** — данные, которые проходят валидацию. **912 тестов. REST API + CLI + Java-библиотека + Allure.**
 Каскады, пакетные вызовы, валидация (8 типов), счета по 809-П (12 типов), ДУЛ (11 видов), 9 КУС-сценариев,
 CSV в трёх режимах, экспорт ED807/ED808, Docker. **P0.1–P0.3, P1.2–P1.4, P2.2, P2.3, P3.1–P3.3, P4.1 закрыты.**

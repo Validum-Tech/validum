@@ -71,6 +71,18 @@ public final class NameGenerator implements DataGenerator {
     this.random = random;
   }
 
+  /**
+   * Сколько различных кириллических ФИО генератор может выдать в принципе.
+   *
+   * <p>Фамилий × (мужских пар «имя + отчество» + женских пар). Используется CLI-флагом {@code
+   * --unique-name}, чтобы честно отказать, когда пул исчерпан.
+   */
+  public static long capacity() {
+    long male = (long) MALE_NAMES_CYR.size() * MALE_PATRONYMICS_CYR.size();
+    long female = (long) FEMALE_NAMES_CYR.size() * FEMALE_PATRONYMICS_CYR.size();
+    return (long) SURNAME_BASES_CYR.size() * (male + female);
+  }
+
   /** Случайное ФИО в кириллице. */
   public PersonName generate() {
     return generate(random.nextBoolean() ? Gender.MALE : Gender.FEMALE);
@@ -86,35 +98,58 @@ public final class NameGenerator implements DataGenerator {
     return script == FioScript.LATIN ? generateLatin(gender) : generateCyrillic(gender);
   }
 
+  /**
+   * Женская форма фамилии по её типу.
+   *
+   * <p>Фамилии на «-ский/-цкий» меняют «-ий» на «-ая», неизменяемые («-ко», «-енко», «-ук», «-юк»,
+   * «-ич», «-ян», «-дзе», «-швили») остаются как есть, остальные получают окончание «-а».
+   */
+  static String femaleSurname(String base) {
+    if (base.endsWith("ский") || base.endsWith("цкий")) {
+      return base.substring(0, base.length() - 2) + "ая";
+    }
+    if (base.endsWith("ко") || base.endsWith("енко") || base.endsWith("ук") || base.endsWith("юк")
+      || base.endsWith("ич") || base.endsWith("ян") || base.endsWith("дзе") || base.endsWith("швили")) {
+      return base;
+    }
+    return base + "а";
+  }
+
+  /** То же правило для латиницы: «-sky/-tsky» → «-skaya/-tskaya», «-ko/-enko/...» не меняются. */
+  static String femaleSurnameLatin(String base) {
+    if (base.endsWith("sky") || base.endsWith("tsky")) {
+      return base.substring(0, base.length() - 1) + "aya";
+    }
+    if (base.endsWith("ko") || base.endsWith("enko") || base.endsWith("uk") || base.endsWith("yuk")
+      || base.endsWith("ich") || base.endsWith("yan")) {
+      return base;
+    }
+    return base + "a";
+  }
+
   private PersonName generateCyrillic(Gender gender) {
     if (gender == Gender.MALE) {
-      int i = random.nextInt(MALE_NAMES_CYR.size());
       String surname = SURNAME_BASES_CYR.get(random.nextInt(SURNAME_BASES_CYR.size()));
-      return new PersonName(
-        surname, MALE_NAMES_CYR.get(i), MALE_PATRONYMICS_CYR.get(i), Gender.MALE);
+      String firstName = MALE_NAMES_CYR.get(random.nextInt(MALE_NAMES_CYR.size()));
+      String patronymic = MALE_PATRONYMICS_CYR.get(random.nextInt(MALE_PATRONYMICS_CYR.size()));
+      return new PersonName(surname, firstName, patronymic, Gender.MALE);
     }
-    int i = random.nextInt(FEMALE_NAMES_CYR.size());
     String baseSurname = SURNAME_BASES_CYR.get(random.nextInt(SURNAME_BASES_CYR.size()));
-    return new PersonName(
-      baseSurname + "а",
-      FEMALE_NAMES_CYR.get(i),
-      FEMALE_PATRONYMICS_CYR.get(i),
-      Gender.FEMALE);
+    String firstName = FEMALE_NAMES_CYR.get(random.nextInt(FEMALE_NAMES_CYR.size()));
+    String patronymic = FEMALE_PATRONYMICS_CYR.get(random.nextInt(FEMALE_PATRONYMICS_CYR.size()));
+    return new PersonName(femaleSurname(baseSurname), firstName, patronymic, Gender.FEMALE);
   }
 
   private PersonName generateLatin(Gender gender) {
     if (gender == Gender.MALE) {
-      int i = random.nextInt(MALE_NAMES_LAT.size());
       String surname = SURNAME_BASES_LAT.get(random.nextInt(SURNAME_BASES_LAT.size()));
-      return new PersonName(
-        surname, MALE_NAMES_LAT.get(i), MALE_PATRONYMICS_LAT.get(i), Gender.MALE);
+      String firstName = MALE_NAMES_LAT.get(random.nextInt(MALE_NAMES_LAT.size()));
+      String patronymic = MALE_PATRONYMICS_LAT.get(random.nextInt(MALE_PATRONYMICS_LAT.size()));
+      return new PersonName(surname, firstName, patronymic, Gender.MALE);
     }
-    int i = random.nextInt(FEMALE_NAMES_LAT.size());
     String baseSurname = SURNAME_BASES_LAT.get(random.nextInt(SURNAME_BASES_LAT.size()));
-    return new PersonName(
-      baseSurname + "a",
-      FEMALE_NAMES_LAT.get(i),
-      FEMALE_PATRONYMICS_LAT.get(i),
-      Gender.FEMALE);
+    String firstName = FEMALE_NAMES_LAT.get(random.nextInt(FEMALE_NAMES_LAT.size()));
+    String patronymic = FEMALE_PATRONYMICS_LAT.get(random.nextInt(FEMALE_PATRONYMICS_LAT.size()));
+    return new PersonName(femaleSurnameLatin(baseSurname), firstName, patronymic, Gender.FEMALE);
   }
 }

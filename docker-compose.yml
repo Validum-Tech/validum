@@ -1,9 +1,10 @@
 services:
   validum-api:
+    # Готовый образ из Docker Hub; `docker compose up --build` пересоберёт из исходников.
+    image: pavelwhite64/validum-api:latest
     build:
       context: .
       dockerfile: validum-api/Dockerfile
-    image: validum-api:latest
     container_name: validum-api
     ports:
       - "8080:8080"

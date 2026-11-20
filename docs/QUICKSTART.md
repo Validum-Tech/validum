@@ -90,13 +90,13 @@ java -jar .\validum-cli\build\libs\validum.jar generate individual --seed 42 --f
 
 | Модуль | Тестов |
 |---|---|
-| `validum-core` | **679** |
+| `validum-core` | **682** |
 | `validum-api` | **92** |
-| `validum-cli` | **114** |
-| `validum-allure` | **19** |
-| **Итого** | **906** |
+| `validum-cli` | **117** |
+| `validum-allure` | **21** |
+| **Итого** | **912** |
 
-Покрытие строк по jacoco (прогон 30.10.2026): `validum-core` — **89,2%** (2309/2588), `validum-api` — **92,2%** (404/438), `validum-cli` — считается тем же отчётом (HTML — `validum-cli/build/reports/jacoco/test/html/index.html`). Худшие пакеты: `validation` (75,9%), `common` (77,2%), `address` (77,8%); полностью покрыты `passport`, `snils`, `ogrn`, `random`. HTML-отчёт — `validum-core/build/reports/jacoco/test/html/index.html`.
+Покрытие строк по jacoco (последний прогон `./gradlew build`): `validum-core` — **89,2%** (2309/2588), `validum-api` — **92,2%** (404/438), `validum-cli` — считается тем же отчётом (HTML — `validum-cli/build/reports/jacoco/test/html/index.html`). Худшие пакеты: `validation` (75,9%), `common` (77,2%), `address` (77,8%); полностью покрыты `passport`, `snils`, `ogrn`, `random`. HTML-отчёт — `validum-core/build/reports/jacoco/test/html/index.html`.
 
 ---
 
@@ -112,16 +112,42 @@ java -jar .\validum-cli\build\libs\validum.jar generate individual --seed 42 --f
 
 ## 🐳 Docker
 
+Готовый образ — в Docker Hub, собирать ничего не нужно:
+
 ```bash
-docker compose up -d
+docker run -d --name validum-api -p 8080:8080 \
+  -v "$PWD/data:/app/data:ro" \
+  -e VALIDUM_BIK_FILE=/app/data/ED807.xml \
+  pavelwhite64/validum-api:latest
 # → Swagger UI: http://localhost:8080/swagger-ui.html
 ```
 
-- Multi-stage build: `gradle:8.14-jdk21` → `eclipse-temurin:21-jre-alpine`
+Образы: `pavelwhite64/validum-api:latest`, `pavelwhite64/validum-api:<версия>` (например `0.7.0`), плюс
+`sha-<хеш>` на каждый коммит. Теги собираются под `linux/amd64` и `linux/arm64` — на Apple Silicon
+работает нативно.
+
+Из исходников (нужен только Docker, JDK не требуется):
+
+```bash
+docker compose up -d --build
+```
+
+- Multi-stage build: `gradle:9.9.1-jdk21` → `eclipse-temurin:17-jre-alpine`
 - Non-root user, container-aware JVM
 - Справочник ЦБ монтируется как volume: `./data:/app/data:ro`
 - Healthcheck: `/actuator/health`
 - Размер: ~250–350 МБ
+
+**Публикация образа** (владелец, вручную или тегом):
+
+```bash
+docker login                       # логин validum, пароль — access token
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -f validum-api/Dockerfile -t pavelwhite64/validum-api:0.7.0 -t pavelwhite64/validum-api:latest --push .
+```
+
+В CI то же делает `.github/workflows/docker.yml` по тегу `v*`; нужны секреты `DOCKERHUB_USERNAME`
+и `DOCKERHUB_TOKEN`.
 
 **DNS (Windows Docker Desktop):** если `UnknownHostException` — Settings → Docker Engine → `"dns": ["8.8.8.8", "1.1.1.1"]`.
 

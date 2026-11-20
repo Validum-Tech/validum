@@ -21,6 +21,7 @@ import ru.validum.core.export.DocumentsCsv;
 import ru.validum.core.export.DocumentsFormat;
 import ru.validum.core.export.IndividualProfileFlattener;
 import ru.validum.core.name.Gender;
+import ru.validum.core.name.NameGenerator;
 import ru.validum.core.profile.AgeDistribution;
 import ru.validum.core.profile.CorruptField;
 import ru.validum.core.profile.IndividualProfile;
@@ -126,6 +127,11 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
       + "Нужен, чтобы показать честный отказ на маленьком пуле: --unique-pool 10 -n 11")
   Long uniquePool;
 
+  @Option(names = "--unique-name",
+    description = "Без повторов ФИО в наборе (требует --seed); нельзя вместе с --unique. "
+      + "Пул ФИО — фамилии × (имена × отчества) по обоим полам")
+  boolean uniqueName;
+
   private String tableName() {
     return common.table != null && !common.table.isBlank()
       ? common.table
@@ -142,6 +148,15 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
       System.err.println("Ошибка: --unique требует --seed, иначе набор невоспроизводим");
       return 2;
     }
+    if (uniqueName && common.seed == null) {
+      System.err.println("Ошибка: --unique-name требует --seed, иначе набор невоспроизводим");
+      return 2;
+    }
+    if (unique && uniqueName) {
+      System.err.println("Ошибка: --unique и --unique-name взаимоисключающие — "
+        + "выберите, что должно быть уникальным");
+      return 2;
+    }
     long baseSeed = common.seed != null ? common.seed : System.nanoTime();
     BikSource bikSource = CliBik.source();
 
@@ -151,13 +166,22 @@ public final class GenerateIndividualCommand implements Callable<Integer> {
       asOfDate = AsOfOption.parse(asOf);
       long pool = uniquePool != null && uniquePool > 0 ? uniquePool : 10_000_000_000L;
       UniqueGuard guard = unique ? new UniqueGuard("ИНН", pool) : null;
+      UniqueGuard nameGuard = uniqueName
+        ? new UniqueGuard("ФИО", NameGenerator.capacity())
+        : null;
       for (int i = 0; i < common.count; i++) {
         long profileSeed = baseSeed + i;
-        profiles.add(guard == null
-          ? newBuilder(profileSeed, bikSource, asOfDate).build().generate()
-          : guard.next(profileSeed,
+        if (nameGuard != null) {
+          profiles.add(nameGuard.next(profileSeed,
+              s -> newBuilder(s, bikSource, asOfDate).build().generate(),
+              IndividualProfile::fullName));
+        } else if (guard != null) {
+          profiles.add(guard.next(profileSeed,
               s -> newBuilder(s, bikSource, asOfDate).build().generate(),
               IndividualProfile::inn));
+        } else {
+          profiles.add(newBuilder(profileSeed, bikSource, asOfDate).build().generate());
+        }
       }
     } catch (IllegalArgumentException e) {
       System.err.println("Ошибка: " + e.getMessage());

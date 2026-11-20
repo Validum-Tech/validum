@@ -92,7 +92,7 @@ subprojects {
         }
     }
 
-    if (name == "validum-core" || name == "validum-allure") {
+    if (name == "validum-core" || name == "validum-allure" || name == "validum-api") {
         apply(plugin = "com.vanniktech.maven.publish")
 
         // Подпись включается только когда ключ реально задан: локальная сборка без секретов работает.
