@@ -6,7 +6,8 @@ name: Docker
 # Триггеры:
 #   - тег v* — собираем и пушим (latest + версия + короткий sha)
 #   - ручной запуск — собираем и пушим версию из gradle.properties
-#   - pull request — только сборка, без пуша (проверяем, что Dockerfile живой)
+#   - pull request — две проверки: запуск собранного образа (amd64) и сборка
+#     под arm64 (иначе отсутствие arm64 у базового образа всплывает только на теге)
 #
 # Секреты (Settings → Secrets and variables → Actions, репозиторий validum):
 #   DOCKERHUB_USERNAME — логин Docker Hub (владелец организации validum)
@@ -40,10 +41,49 @@ env:
   IMAGE: pavelwhite64/validum-api
 
 jobs:
-  build:
+  # Быстрая проверка: образ действительно собирается и запускается.
+  # Только amd64, потому что load в локальный docker возможен для одной платформы.
+  smoke:
+    name: Проверка запуска (amd64)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Версия продукта
+        id: version
+        run: |
+          VERSION="$(grep -E '^version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Сборка под amd64 (с загрузкой в docker)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: validum-api/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.IMAGE }}:ci-${{ github.event.pull_request.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Запуск образа
+        run: |
+          docker run --rm --entrypoint sh "${{ env.IMAGE }}:ci-${{ github.event.pull_request.number }}" -c \
+            'echo "java: $(java -version 2>&1 | head -1)"; ls -l /app/app.jar'
+
+  # Настоящая сборка: те же платформы, что и на теге, — так arm64-проблемы
+  # (например, базовый образ без arm64) ловятся ещё на PR, а не после релиза.
+  image:
     name: Сборка и публикация образа
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -87,26 +127,15 @@ jobs:
             org.opencontainers.image.licenses=Apache-2.0
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
 
-      # На PR и ручном запуске без push — только сборка под amd64 (быстро).
-      # На теге — мультиархитектура amd64 + arm64 (Mac на Apple Silicon).
+      # Платформы одинаковые на PR и на теге — проверяем ровно то, что поедет в прод.
       - name: Сборка и пуш
         uses: docker/build-push-action@v6
         with:
           context: .
           file: validum-api/Dockerfile
-          platforms: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.push) }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # На PR образа нет в локальном docker без load — buildx по умолчанию
-          # оставляет его только в кеше, и следующий шаг «Проверка образа» падает
-          # на `docker run ... :sha-xxxx` («Unable to find image locally»).
-          load: ${{ github.event_name == 'pull_request' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Проверка образа
-        if: github.event_name == 'pull_request'
-        run: |
-          docker run --rm --entrypoint sh "${{ env.IMAGE }}:sha-$(git rev-parse --short HEAD)" -c \
-            'echo "java: $(java -version 2>&1 | head -1)"; ls -l /app/app.jar'
